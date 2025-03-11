@@ -3,7 +3,7 @@ module github.com/E4-Computer-Engineering/nvme_exporter
 go 1.23.4
 
 require (
-	github.com/prometheus/client_golang v1.21.0
+	github.com/prometheus/client_golang v1.21.1
 	github.com/tidwall/gjson v1.18.0
 )
 
