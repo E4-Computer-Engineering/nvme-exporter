@@ -1,6 +1,6 @@
 # nvme_exporter
 
-Prometheus exporter for nvme smart-log and OCP smart-log metrics
+Prometheus exporter for nvme smart-log and OCP smart-log metrics inspired by [fritchie nvme exporter](https://github.com/fritchie/nvme_exporter)
 
 Specification versions of reference:
 
