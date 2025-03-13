@@ -1,0 +1,39 @@
+groups:
+  - name: Nvme device Write Amplification
+    rules:
+      - record: device:nvme_device_waf:total
+        expr: nvme_physical_media_units_written_lo / (nvme_data_units_written * 512000)
+      - record: device:nvme_physical_media_units_written_lo:rate
+        expr: rate(nvme_physical_media_units_written_lo[1m])
+      - record: device:nvme_data_units_written:rate_bytes
+        expr: rate(nvme_data_units_written[5m])*512000
+      - record: device:nvme_device_writeamp:rate
+        expr: device:nvme_physical_media_units_written_lo:rate / device:nvme_data_units_written:rate_bytes
+  - name: NVMe device Temperature from K to Celsius
+    rules:
+      - record: device:nvme_temperature:celsius
+        expr: (nvme_temperature - 273.15)
+  - name: NVMe Physical size of SSDs (in TB)    
+    rules:
+      - record: device:nvme_physical_size:TB
+        expr: round(nvme_physical_size / 1000000000000, 0.01)
+  - name: Calculation of TBW (capacity times flash cycles over waf)
+    rules:
+      - record: device:TBW_numerator
+        expr: device:nvme_physical_size:TB * 3000
+      - record: device:TBW_calculated
+        expr: device:TBW_numerator / on(device) device:nvme_device_waf:total
+  - name: Estimation of the device remaining life
+    rules:
+      - record: device:DRL_calculated
+        expr: 100 * (1 - ((nvme_data_units_written*512000)/1e12) / on(device) device:TBW_calculated)
+  
+  - name: Prediction of DRL in 4 hours
+    rules:
+      - record: device:projected_DRL_4h
+        expr: predict_linear(device:DRL_calculated[10m], 4*3600)
+
+  - name: Calculation of dynamic Drives Writes per Day (DWPD)
+    rules:
+      - record: device:DWPD_calculated
+        expr: device:TBW_calculated / on(device) (365*5*device:nvme_physical_size:TB)  
