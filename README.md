@@ -33,7 +33,8 @@ nvme ocp-smart-add-log <device_name>
 * Docker: A sample Dockerfile and docker-compose.yaml are provided.
 * Kubernetes: In [resources](resources/k8s/).
 * Grafana: In [resources](resources/grafana/) for dashboards.
-  * [smart-log dashboard](https://grafana.com/grafana/dashboards/14706)
+  * [smart-log and OCP dashboard](https://github.com/E4-Computer-Engineering/nvme-exporter/blob/main/resources/grafana/dashboard_SMART_OCP.json)
+  * [smart-log dashboard](https://github.com/E4-Computer-Engineering/nvme-exporter/blob/main/resources/grafana/dashboard_SMART.json)
 * Prometheus: In [resources](resources/prom/) for recording and alert rules.
 * Systemd: In [resources](resources/systemd/) for executing the exporter as unit.
 * Scripts: In [resources](resources/scripts/) for package installation hooks.
