@@ -1,8 +1,8 @@
-FROM ubuntu:24.04
+FROM fedora:41
 
-RUN apt-get update
-    && apt-get install -y nvme-cli
-    && rm -rf /var/lib/apt/lists/*
+RUN dnf update -y \
+    && dnf install -y nvme-cli \
+    && dnf clean all
 
 COPY nvme_exporter /usr/bin/nvme_exporter
 

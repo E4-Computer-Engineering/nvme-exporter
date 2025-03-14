@@ -17,7 +17,9 @@ import (
 )
 
 var _supportedVersions = map[string]bool{
-	"2.9": true,
+	"2.9":  true,
+	"2.10": true,
+	"2.11": true,
 }
 
 func isSupportedVersion(version string) bool {
