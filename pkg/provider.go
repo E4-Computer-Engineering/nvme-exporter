@@ -31,7 +31,7 @@ type InfoMetricProvider struct {
 // NewInfoMetricProvider is the constructor for InfoMetricProvider objects.
 // It directly initializes the DescData struct and returns
 // the built InfoMetricProvider.
-// No need to return a pointer, since the struct is mostly static data.
+// No need to return a pointer, since the struct is static data.
 func NewInfoMetricProvider(
 	desc *prometheus.Desc,
 	valueType prometheus.ValueType,
@@ -78,7 +78,7 @@ type LogMetricProvider struct {
 // NewLogMetricProvider is the constructor for LogMetricProvider objects.
 // It directly initializes the DescData struct and returns
 // the built LogMetricProvider.
-// No need to return a pointer, since the struct is mostly static data.
+// No need to return a pointer, since the struct is static data.
 func NewLogMetricProvider(
 	desc *prometheus.Desc,
 	valueType prometheus.ValueType,
