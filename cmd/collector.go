@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/E4-Computer-Engineering/nvme_exporter/pkg"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/E4-Computer-Engineering/nvme_exporter/pkg"
 )
 
 type ProviderFactory struct {
@@ -59,7 +60,7 @@ func newNvmeCollector(ocpEnabled bool) prometheus.Collector {
 		defaultLabels: labels,
 	}
 
-	// Info metrics
+	// Info metrics.
 	infoMetricProviders := []pkg.InfoMetricProvider{
 		gaugeValueFactory.NewInfoMetricProvider(
 			"nvme_namespace",
@@ -93,7 +94,7 @@ func newNvmeCollector(ocpEnabled bool) prometheus.Collector {
 		),
 	}
 
-	// Smart-log metrics
+	// Smart-log metrics.
 	logMetricProviders := []pkg.LogMetricProvider{
 		gaugeValueFactory.NewLogMetricProvider(
 			"nvme_critical_warning",
@@ -223,17 +224,12 @@ func newNvmeCollector(ocpEnabled bool) prometheus.Collector {
 		),
 	}
 
-	// OCP smart-log metrics
+	// OCP smart-log metrics.
 	ocpLogMetricProviders := []pkg.LogMetricProvider{
 		counterValueFactory.NewLogMetricProvider(
 			"nvme_physical_media_units_written_hi",
 			"Physical meda units written high",
 			"Physical media units written.hi",
-		),
-		counterValueFactory.NewLogMetricProvider(
-			"nvme_physical_media_units_written_lo",
-			"Physical meda units written low",
-			"Physical media units written.lo",
 		),
 		counterValueFactory.NewLogMetricProvider(
 			"nvme_physical_media_units_written_lo",

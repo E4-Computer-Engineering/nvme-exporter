@@ -11,9 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/E4-Computer-Engineering/nvme_exporter/pkg/utils"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/E4-Computer-Engineering/nvme_exporter/pkg/utils"
 )
 
 var _supportedVersions = map[string]bool{
@@ -31,15 +32,17 @@ func isSupportedVersion(version string) bool {
 func checkNvmeVersion() error {
 	validator := func(out string) bool {
 		re := regexp.MustCompile(`nvme version (\d+\.\d+)\.\d+`)
-		match := re.FindStringSubmatch(string(out))
+		match := re.FindStringSubmatch(out)
 
 		if match != nil {
 			version := match[1]
+
 			return isSupportedVersion(version)
 		}
+
 		return false
 	}
-	onError := func(out string) error {
+	onError := func(string) error {
 		return fmt.Errorf("NVMe cli version not supported, supported versions are: %v", _supportedVersions)
 	}
 
@@ -49,7 +52,11 @@ func checkNvmeVersion() error {
 	)
 
 	_, err := shell.Run("nvme", "--version")
-	return err
+	if err != nil {
+		return fmt.Errorf("error checking nvme CLI version: %w", err)
+	}
+
+	return nil
 }
 
 func main() {

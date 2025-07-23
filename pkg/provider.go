@@ -8,7 +8,6 @@ import (
 // DescData is a simple struct that pairs a pointer to a
 // prometheus.Desc and a prometheus.ValueType.
 type DescData struct {
-
 	// desc holds the pointer to the prometheus.desc object
 	Desc *prometheus.Desc
 
@@ -17,15 +16,14 @@ type DescData struct {
 }
 
 // InfoMetricProvider is an object that computes the info metric
-// from the device data in JSON format
+// from the device data in JSON format.
 type InfoMetricProvider struct {
-
 	// DescData is embedded
 	DescData
 
-	// JsonKey is the string key that the object needs to access
+	// JSONKey is the string key that the object needs to access
 	// in the device JSON to fetch the metric float64 value
-	JsonKey string
+	JSONKey string
 }
 
 // NewInfoMetricProvider is the constructor for InfoMetricProvider objects.
@@ -42,17 +40,17 @@ func NewInfoMetricProvider(
 			Desc:      desc,
 			ValueType: valueType,
 		},
-		JsonKey: jsonKey,
+		JSONKey: jsonKey,
 	}
 }
 
 // GetMetric computes the metric from the
-// device data in JSON form
+// device data in JSON form.
 func (ip InfoMetricProvider) GetMetric(
 	device gjson.Result,
 	labels ...string,
 ) prometheus.Metric {
-	value := device.Get(ip.JsonKey).Float()
+	value := device.Get(ip.JSONKey).Float()
 
 	metric := prometheus.MustNewConstMetric(
 		ip.Desc,
@@ -65,14 +63,14 @@ func (ip InfoMetricProvider) GetMetric(
 }
 
 // LogMetricProvider is an object that computes the metric
-// from the smart log data in JSON format
+// from the smart log data in JSON format.
 type LogMetricProvider struct {
 	// DescData is embedded
 	DescData
 
-	// JsonKey is the string key that the object needs to access
-	// in the logs JSON to fetch the metric float64 value
-	JsonKey string
+	// JSONKey is the string key that the object needs to access
+	// in the logs JSON to fetch the metric float64 value.
+	JSONKey string
 }
 
 // NewLogMetricProvider is the constructor for LogMetricProvider objects.
@@ -89,17 +87,17 @@ func NewLogMetricProvider(
 			Desc:      desc,
 			ValueType: valueType,
 		},
-		JsonKey: jsonKey,
+		JSONKey: jsonKey,
 	}
 }
 
 // GetMetric computes the metric from the
-// smart log data in JSON form
+// smart log data in JSON form.
 func (lp LogMetricProvider) GetMetric(
 	smartLog gjson.Result,
 	labels ...string,
 ) prometheus.Metric {
-	value := smartLog.Get(lp.JsonKey).Float()
+	value := smartLog.Get(lp.JSONKey).Float()
 
 	metric := prometheus.MustNewConstMetric(
 		lp.Desc,

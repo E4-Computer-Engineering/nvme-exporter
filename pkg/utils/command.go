@@ -6,10 +6,10 @@ import (
 )
 
 // OutputValidator is a simple type alias for functions
-// that validate the output in the shell struct
+// that validate the output in the shell struct.
 type OutputValidator func(string) bool
 
-// We generalize the shell to use it with different validators
+// We generalize the shell to use it with different validators.
 type Shell struct {
 	validators        []OutputValidator
 	onValidationError func(string) error
@@ -20,11 +20,11 @@ type Shell struct {
 type ShellCommandOpt func(*Shell)
 
 // NewShell instantiates a new shell object using the
-// functional options pattern and returns a pointer to it
+// functional options pattern and returns a pointer to it.
 func NewShell(opts ...ShellCommandOpt) *Shell {
 	validators := []OutputValidator{}
 	onValidationError := func(out string) error {
-		return fmt.Errorf("validation error, output: %s", string(out))
+		return fmt.Errorf("validation error, output: %s", out)
 	}
 
 	shell := &Shell{
@@ -40,7 +40,7 @@ func NewShell(opts ...ShellCommandOpt) *Shell {
 }
 
 // WithValidators is used to provide an arbitrary number
-// of output validators to the new shell constructor
+// of output validators to the new shell constructor.
 func WithValidators(validators ...OutputValidator) ShellCommandOpt {
 	return func(s *Shell) {
 		s.validators = validators
@@ -48,7 +48,7 @@ func WithValidators(validators ...OutputValidator) ShellCommandOpt {
 }
 
 // WithOnValidationError is used to provide a custom
-// onValidationError function
+// onValidationError function.
 func WithOnValidationError(onValidationError func(string) error) ShellCommandOpt {
 	return func(s *Shell) {
 		s.onValidationError = onValidationError
@@ -57,7 +57,7 @@ func WithOnValidationError(onValidationError func(string) error) ShellCommandOpt
 
 // Run runs a command in the shell.
 // If an error raised from running the command or any of the shell validators
-// fails validating the command output, an error is returned from this method
+// fails validating the command output, an error is returned from this method.
 func (s *Shell) Run(cmd string, args ...string) ([]byte, error) {
 	command := exec.Command(cmd, args...)
 
