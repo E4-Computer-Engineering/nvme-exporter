@@ -6,7 +6,7 @@ before:
 
 builds:
   - id: nvme_exporter
-    main: ./cmd/nvme_exporter
+    main: ./cmd
     binary: nvme_exporter
     ldflags:
       - -s -w
