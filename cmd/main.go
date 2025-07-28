@@ -29,36 +29,6 @@ func isSupportedVersion(version string) bool {
 	return ok
 }
 
-func checkNvmeVersion() error {
-	validator := func(out string) bool {
-		re := regexp.MustCompile(`nvme version (\d+\.\d+)\.\d+`)
-		match := re.FindStringSubmatch(out)
-
-		if match != nil {
-			version := match[1]
-
-			return isSupportedVersion(version)
-		}
-
-		return false
-	}
-	onError := func(string) error {
-		return fmt.Errorf("NVMe cli version not supported, supported versions are: %v", _supportedVersions)
-	}
-
-	shell := utils.NewShell(
-		utils.WithValidators(validator),
-		utils.WithOnValidationError(onError),
-	)
-
-	_, err := shell.Run("nvme", "--version")
-	if err != nil {
-		return fmt.Errorf("error checking nvme CLI version: %w", err)
-	}
-
-	return nil
-}
-
 func main() {
 	flag.Usage = func() {
 		fmt.Println("nvme_exporter - Exports NVMe smart-log and smart-ocp-log metrics in Prometheus format")
@@ -96,8 +66,22 @@ func main() {
 		log.Fatalf("Cannot find NVMe cli command in path: %s\n", err)
 	}
 
-	if err = checkNvmeVersion(); err != nil {
-		log.Fatal(err)
+	// check for nvme-cli version
+	out, err := utils.ExecuteCommand("nvme", "--version")
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	re := regexp.MustCompile(`nvme version (\d+\.\d+)\.\d+`)
+	match := re.FindStringSubmatch(out)
+
+	if match != nil {
+		version := match[1]
+		if !isSupportedVersion(version) {
+			log.Printf("NVMe cli version %s not supported, supported versions are: %v", version, _supportedVersions)
+		}
+	} else {
+		log.Fatalf("Unable to find NVMe CLI version in output: %s", out)
 	}
 
 	prometheus.MustRegister(newNvmeCollector(*ocp))

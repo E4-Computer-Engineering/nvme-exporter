@@ -3,75 +3,44 @@ package utils
 import (
 	"fmt"
 	"os/exec"
+	"strings"
+
+	"github.com/tidwall/gjson"
 )
 
-// OutputValidator is a simple type alias for functions
-// that validate the output in the shell struct.
-type OutputValidator func(string) bool
+func getStringCmd(cmd string, args ...string) string {
+	cmdSlice := []string{cmd}
+	cmdSlice = append(cmdSlice, args...)
 
-// We generalize the shell to use it with different validators.
-type Shell struct {
-	validators        []OutputValidator
-	onValidationError func(string) error
+	return strings.Join(cmdSlice, " ")
 }
 
-// Functional options pattern:
-// https://golang.cafe/blog/golang-functional-options-pattern.html
-type ShellCommandOpt func(*Shell)
-
-// NewShell instantiates a new shell object using the
-// functional options pattern and returns a pointer to it.
-func NewShell(opts ...ShellCommandOpt) *Shell {
-	validators := []OutputValidator{}
-	onValidationError := func(out string) error {
-		return fmt.Errorf("validation error, output: %s", out)
-	}
-
-	shell := &Shell{
-		validators:        validators,
-		onValidationError: onValidationError,
-	}
-
-	for _, opt := range opts {
-		opt(shell)
-	}
-
-	return shell
-}
-
-// WithValidators is used to provide an arbitrary number
-// of output validators to the new shell constructor.
-func WithValidators(validators ...OutputValidator) ShellCommandOpt {
-	return func(s *Shell) {
-		s.validators = validators
-	}
-}
-
-// WithOnValidationError is used to provide a custom
-// onValidationError function.
-func WithOnValidationError(onValidationError func(string) error) ShellCommandOpt {
-	return func(s *Shell) {
-		s.onValidationError = onValidationError
-	}
-}
-
-// Run runs a command in the shell.
-// If an error raised from running the command or any of the shell validators
-// fails validating the command output, an error is returned from this method.
-func (s *Shell) Run(cmd string, args ...string) ([]byte, error) {
+func ExecuteCommand(cmd string, args ...string) (string, error) {
 	command := exec.Command(cmd, args...)
 
-	output, err := command.CombinedOutput()
+	out, err := command.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("error running %s command: %w, output: %s", cmd, err, string(output))
+		cmdString := getStringCmd(cmd, args...)
+
+		return string(out), fmt.Errorf("error running command %s: %w", cmdString, err)
 	}
 
-	// Each validator is tested on the output
-	for _, validator := range s.validators {
-		if !validator(string(output)) {
-			return nil, s.onValidationError(string(output))
-		}
+	return string(out), nil
+}
+
+func ExecuteJSONCommand(cmd string, args ...string) (gjson.Result, error) {
+	output, err := ExecuteCommand(cmd, args...)
+	if err != nil {
+		return gjson.Result{}, err
 	}
 
-	return output, nil
+	if !gjson.Valid(output) {
+		cmdString := getStringCmd(cmd, args...)
+
+		return gjson.Result{}, fmt.Errorf("invalid JSON output from %s command: %s", cmdString, output)
+	}
+
+	ret := gjson.Parse(output)
+
+	return ret, nil
 }

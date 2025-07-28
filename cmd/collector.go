@@ -1,10 +1,32 @@
 package main
 
 import (
+	"log"
+
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/tidwall/gjson"
 
 	"github.com/E4-Computer-Engineering/nvme_exporter/pkg"
+	"github.com/E4-Computer-Engineering/nvme_exporter/pkg/utils"
 )
+
+func getSmartLogData(devicePath string) gjson.Result {
+	smartLog, err := utils.ExecuteJSONCommand("nvme", "smart-log", devicePath, "-o", "json")
+	if err != nil {
+		log.Printf("Error running smart-log %s -o json: %s\n", devicePath, err)
+	}
+
+	return smartLog
+}
+
+func getOcpSmartLogData(devicePath string) gjson.Result {
+	ocpSmartLog, err := utils.ExecuteJSONCommand("nvme", "ocp", "smart-add-log", devicePath, "-o", "json")
+	if err != nil {
+		log.Printf("Error running smart-add-log %s -o json: %s\n", devicePath, err)
+	}
+
+	return ocpSmartLog
+}
 
 type ProviderFactory struct {
 	valueType     prometheus.ValueType
@@ -413,10 +435,14 @@ func newNvmeCollector(ocpEnabled bool) prometheus.Collector {
 		),
 	}
 
-	return &pkg.NvmeCollector{
-		OcpEnabled:            ocpEnabled,
-		InfoMetricProviders:   infoMetricProviders,
-		LogMetricProviders:    logMetricProviders,
-		OcpLogMetricProviders: ocpLogMetricProviders,
+	var collectors []prometheus.Collector
+
+	collectors = append(collectors, pkg.NewInfoMetricCollector(infoMetricProviders))
+	collectors = append(collectors, pkg.NewLogMetricCollector(logMetricProviders, getSmartLogData))
+
+	if ocpEnabled {
+		collectors = append(collectors, pkg.NewLogMetricCollector(ocpLogMetricProviders, getOcpSmartLogData))
 	}
+
+	return pkg.NewCompositeCollector(collectors)
 }

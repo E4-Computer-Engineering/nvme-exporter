@@ -9,121 +9,123 @@ import (
 	"github.com/E4-Computer-Engineering/nvme_exporter/pkg/utils"
 )
 
-// NvmeCollector implements prometheus.Collector interface.
-// Metric provider objects are separated in three different fields.
-type NvmeCollector struct {
-	OcpEnabled            bool
-	InfoMetricProviders   []InfoMetricProvider
-	LogMetricProviders    []LogMetricProvider
-	OcpLogMetricProviders []LogMetricProvider
-}
-
-// Describe now is a compact method that iterates
-// through the MetricProvider slices, and sends all prometheus.Desc
-// object through the channel.
-func (c *NvmeCollector) Describe(ch chan<- *prometheus.Desc) {
-	for _, infoProvider := range c.InfoMetricProviders {
-		ch <- infoProvider.Desc
-	}
-
-	for _, logProvider := range c.LogMetricProviders {
-		ch <- logProvider.Desc
-	}
-
-	for _, ocpLogProvider := range c.OcpLogMetricProviders {
-		ch <- ocpLogProvider.Desc
-	}
-}
-
-// Collect gets the devices list and sends all the needed
-// metrics through the provided channel.
-func (c *NvmeCollector) Collect(ch chan<- prometheus.Metric) {
-	devices := c.getDevices()
-
-	for _, device := range devices {
-		c.sendInfoMetrics(ch, device)
-
-		path := device.Get("DevicePath")
-		c.sendSmartLogMetrics(ch, path)
-
-		if c.OcpEnabled {
-			c.sendOcpSmartLogMetrics(ch, path)
-		}
-	}
-}
-
-// getDevices queries the devices list through the shell
+// GetDevices queries the devices list through the shell
 // and returns an array of JSON results with the devices data.
-func (c *NvmeCollector) getDevices() []gjson.Result {
-	shell := utils.NewShell(utils.WithValidators(gjson.Valid))
-
-	nvmeDeviceCmd, err := shell.Run("nvme", "list", "-o", "json")
+func GetDevices() []gjson.Result {
+	devicesJSON, err := utils.ExecuteJSONCommand("nvme", "list", "-o", "json")
 	if err != nil {
 		log.Printf("Error running nvme list -o json: %s\n", err)
 	}
 
-	return gjson.Get(string(nvmeDeviceCmd), "Devices").Array()
+	return devicesJSON.Get("Devices").Array()
 }
 
-// sendInfoMetrics gets the info metric from all InfoMetricProvider
-// in c.InfoMetricProviders, and sends them through the channel.
-func (c *NvmeCollector) sendInfoMetrics(ch chan<- prometheus.Metric, device gjson.Result) {
-	devicePath := device.Get("DevicePath").String()
-	genericPath := device.Get("GenericPath").String()
-	firmware := device.Get("Firmware").String()
-	modelNumber := device.Get("ModelNumber").String()
-	serialNumber := device.Get("SerialNumber").String()
+// InfoMetricCollector implements prometheus.Collector and sends info metrics.
+type InfoMetricCollector struct {
+	// InfoMetricProviders is the list of providers for the info metric collector
+	InfoMetricProviders []InfoMetricProvider
+}
 
-	for _, infoProvider := range c.InfoMetricProviders {
-		// Fetching the metric object is delegated to the provider.
-		metric := infoProvider.GetMetric(
-			device,
-			devicePath,
-			genericPath,
-			firmware,
-			modelNumber,
-			serialNumber,
-		)
-		ch <- metric
+// NewInfoMetricCollector initializes and returns a new InfoMetricCollector object.
+func NewInfoMetricCollector(providers []InfoMetricProvider) *InfoMetricCollector {
+	return &InfoMetricCollector{InfoMetricProviders: providers}
+}
+
+// Describe sends all prometheus.Desc pointers through the channel.
+func (ic *InfoMetricCollector) Describe(ch chan<- *prometheus.Desc) {
+	for _, infoProvider := range ic.InfoMetricProviders {
+		ch <- infoProvider.Desc
 	}
 }
 
-// sendSmartLogMetrics queries the shell for smart-log data,
-// gets the metrics from each LogMetricProvider in c.LogMetricProviders
-// and sends them through the channel.
-func (c *NvmeCollector) sendSmartLogMetrics(ch chan<- prometheus.Metric, device gjson.Result) {
-	shell := utils.NewShell(utils.WithValidators(gjson.Valid))
+// Collect gets the devices data and sends all info metrics through the channel.
+func (ic *InfoMetricCollector) Collect(ch chan<- prometheus.Metric) {
+	devices := GetDevices()
 
-	smartLog, err := shell.Run("nvme", "smart-log", device.String(), "-o", "json")
-	if err != nil {
-		log.Printf("Error running smart-log %s -o json: %s\n", device.String(), err)
-	}
+	for _, device := range devices {
+		devicePath := device.Get("DevicePath").String()
+		genericPath := device.Get("GenericPath").String()
+		firmware := device.Get("Firmware").String()
+		modelNumber := device.Get("ModelNumber").String()
+		serialNumber := device.Get("SerialNumber").String()
 
-	jsonLog := gjson.Parse(string(smartLog))
-
-	for _, logProvider := range c.LogMetricProviders {
-		// Fetching the metric object is delegated to the provider.
-		metric := logProvider.GetMetric(jsonLog, device.String())
-		ch <- metric
+		for _, infoProvider := range ic.InfoMetricProviders {
+			// Fetching the metric object is delegated to the provider.
+			metric := infoProvider.GetMetric(
+				device,
+				devicePath,
+				genericPath,
+				firmware,
+				modelNumber,
+				serialNumber,
+			)
+			ch <- metric
+		}
 	}
 }
 
-// sendOcpSmartLogMetrics queries the shell for ocp smart-log data,
-// gets the metrics from each OcpLogMetricProvider in c.OcpLogMetricProviders
-// and sends them through the channel.
-func (c *NvmeCollector) sendOcpSmartLogMetrics(ch chan<- prometheus.Metric, device gjson.Result) {
-	shell := utils.NewShell(utils.WithValidators(gjson.Valid))
+// InfoMetricCollector implements prometheus.Collector and sends smart log metrics.
+type LogMetricCollector struct {
+	// LogMetricProviders is the list of providers for the log metric collector
+	LogMetricProviders []LogMetricProvider
 
-	ocpSmartLog, err := shell.Run("nvme", "ocp", "smart-add-log", device.String(), "-o", "json")
-	if err != nil {
-		log.Printf("Error running smart-add-log %s -o json: %s\n", device.String(), err)
+	// getData receives the devicePath and gets the log JSON data
+	getData func(string) gjson.Result
+}
+
+// NewLogMetricCollector initializes and returns a new LogMetricCollector object.
+func NewLogMetricCollector(providers []LogMetricProvider, getData func(string) gjson.Result) *LogMetricCollector {
+	return &LogMetricCollector{
+		LogMetricProviders: providers,
+		getData:            getData,
 	}
+}
 
-	jsonLog := gjson.Parse(string(ocpSmartLog))
+// Describe sends all prometheus.Desc pointers through the channel.
+func (ic *LogMetricCollector) Describe(ch chan<- *prometheus.Desc) {
+	for _, logProvider := range ic.LogMetricProviders {
+		ch <- logProvider.Desc
+	}
+}
 
-	for _, ocpLogProvider := range c.OcpLogMetricProviders {
-		// Fetching the metric object is delegated to the provider.
-		metric := ocpLogProvider.GetMetric(jsonLog, device.String())
-		ch <- metric
+// Collect gets the smart log data and sends all log metrics through the channel.
+func (ic *LogMetricCollector) Collect(ch chan<- prometheus.Metric) {
+	devices := GetDevices()
+
+	for _, device := range devices {
+		devicePath := device.Get("DevicePath").String()
+
+		jsonData := ic.getData(devicePath)
+		for _, logProvider := range ic.LogMetricProviders {
+			// Fetching the metric object is delegated to the provider.
+			metric := logProvider.GetMetric(jsonData, devicePath)
+			ch <- metric
+		}
+	}
+}
+
+// CompositeCollector implements prometheus.Collector interface,
+// wrapping a slice of other prometheus.Collector objects.
+type CompositeCollector struct {
+	// collectors holds a simple list of prometheus.Collector objects
+	collectors []prometheus.Collector
+}
+
+// NewCompositeCollector initializes and returns a new CompositeCollector object.
+func NewCompositeCollector(collectors []prometheus.Collector) *CompositeCollector {
+	return &CompositeCollector{collectors: collectors}
+}
+
+// Describe calls Describe on every collector in ic.collectors.
+func (ic *CompositeCollector) Describe(ch chan<- *prometheus.Desc) {
+	for _, collector := range ic.collectors {
+		collector.Describe(ch)
+	}
+}
+
+// Collect calls Collect on every collector in ic.collectors.
+func (ic *CompositeCollector) Collect(ch chan<- prometheus.Metric) {
+	for _, collector := range ic.collectors {
+		collector.Collect(ch)
 	}
 }
