@@ -20,12 +20,26 @@ func GetDevices() []gjson.Result {
 	return devicesJSON.Get("Devices").Array()
 }
 
+// MetricCollector is the interface implemented by the objects contained
+// in the CompositeCollector field.
+//
+// We could have the collectors implement prometheus.Collector directly, but then
+// we wound unnecessarily have to call GetDevices more than once.
+//
+// Here the device data is injected in CollectMetrics, so that we can call
+// GetDevice once in CompositeCollector.Collect
+// (it is a shell function, so every call can potentially be "expensive").
 type MetricCollector interface {
+	// Describe is the same as prometheus.Collector.Describe
 	Describe(descChan chan<- *prometheus.Desc)
+
+	// CollectMetrics does what prometheus.Collector.Collect does,
+	// but needs the device JSON data to prevent calling GetDevice
+	// multiple times
 	CollectMetrics(metricChan chan<- prometheus.Metric, device gjson.Result)
 }
 
-// InfoMetricCollector implements prometheus.Collector and sends info metrics.
+// InfoMetricCollector implements MetricCollector and sends info metrics.
 type InfoMetricCollector struct {
 	// InfoMetricProviders is the list of providers for the info metric collector
 	InfoMetricProviders []InfoMetricProvider
@@ -65,7 +79,7 @@ func (ic *InfoMetricCollector) CollectMetrics(ch chan<- prometheus.Metric, devic
 	}
 }
 
-// InfoMetricCollector implements prometheus.Collector and sends smart log metrics.
+// InfoMetricCollector implements MetricCollector and sends smart log metrics.
 type LogMetricCollector struct {
 	// LogMetricProviders is the list of providers for the log metric collector
 	LogMetricProviders []LogMetricProvider
@@ -113,14 +127,14 @@ func NewCompositeCollector(collectors []MetricCollector) *CompositeCollector {
 	return &CompositeCollector{collectors: collectors}
 }
 
-// Describe calls Describe on every collector in ic.collectors.
+// Describe calls Describe on every collector in cc.collectors.
 func (cc *CompositeCollector) Describe(ch chan<- *prometheus.Desc) {
 	for _, collector := range cc.collectors {
 		collector.Describe(ch)
 	}
 }
 
-// Collect calls Collect on every collector in ic.collectors.
+// Collect calls Collect on every collector in cc.collectors.
 func (cc *CompositeCollector) Collect(ch chan<- prometheus.Metric) {
 	devices := GetDevices()
 
