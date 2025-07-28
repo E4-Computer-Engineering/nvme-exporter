@@ -82,7 +82,7 @@ func newNvmeCollector(ocpEnabled bool) prometheus.Collector {
 		defaultLabels: labels,
 	}
 
-	// Info metrics.
+	// Info metrics
 	infoMetricProviders := []pkg.InfoMetricProvider{
 		gaugeValueFactory.NewInfoMetricProvider(
 			"nvme_namespace",
@@ -116,7 +116,7 @@ func newNvmeCollector(ocpEnabled bool) prometheus.Collector {
 		),
 	}
 
-	// Smart-log metrics.
+	// Smart-log metrics
 	logMetricProviders := []pkg.LogMetricProvider{
 		gaugeValueFactory.NewLogMetricProvider(
 			"nvme_critical_warning",
@@ -246,7 +246,7 @@ func newNvmeCollector(ocpEnabled bool) prometheus.Collector {
 		),
 	}
 
-	// OCP smart-log metrics.
+	// OCP smart-log metrics
 	ocpLogMetricProviders := []pkg.LogMetricProvider{
 		counterValueFactory.NewLogMetricProvider(
 			"nvme_physical_media_units_written_hi",
@@ -436,7 +436,6 @@ func newNvmeCollector(ocpEnabled bool) prometheus.Collector {
 	}
 
 	var collectors []prometheus.Collector
-
 	collectors = append(collectors, pkg.NewInfoMetricCollector(infoMetricProviders))
 	collectors = append(collectors, pkg.NewLogMetricCollector(logMetricProviders, getSmartLogData))
 

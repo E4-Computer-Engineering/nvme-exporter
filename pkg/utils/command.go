@@ -8,6 +8,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+// getStringCmd produces a single string from the cmd, args... format.
 func getStringCmd(cmd string, args ...string) string {
 	cmdSlice := []string{cmd}
 	cmdSlice = append(cmdSlice, args...)
@@ -15,6 +16,7 @@ func getStringCmd(cmd string, args ...string) string {
 	return strings.Join(cmdSlice, " ")
 }
 
+// ExecuteCommand executes a command and returns a nicely-formatted error if it fails.
 func ExecuteCommand(cmd string, args ...string) (string, error) {
 	command := exec.Command(cmd, args...)
 
@@ -28,6 +30,8 @@ func ExecuteCommand(cmd string, args ...string) (string, error) {
 	return string(out), nil
 }
 
+// ExecuteJSONCommand executes a command, validates the JSON output, and returns
+// the parsed gjson.Result object.
 func ExecuteJSONCommand(cmd string, args ...string) (gjson.Result, error) {
 	output, err := ExecuteCommand(cmd, args...)
 	if err != nil {

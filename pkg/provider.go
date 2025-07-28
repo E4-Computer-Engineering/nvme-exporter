@@ -69,7 +69,7 @@ type LogMetricProvider struct {
 	DescData
 
 	// JSONKey is the string key that the object needs to access
-	// in the logs JSON to fetch the metric float64 value.
+	// in the logs JSON to fetch the metric float64 value
 	JSONKey string
 }
 

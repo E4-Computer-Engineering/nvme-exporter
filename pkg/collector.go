@@ -50,7 +50,7 @@ func (ic *InfoMetricCollector) Collect(ch chan<- prometheus.Metric) {
 		serialNumber := device.Get("SerialNumber").String()
 
 		for _, infoProvider := range ic.InfoMetricProviders {
-			// Fetching the metric object is delegated to the provider.
+			// Fetching the metric object is delegated to the provider
 			metric := infoProvider.GetMetric(
 				device,
 				devicePath,
@@ -97,7 +97,7 @@ func (ic *LogMetricCollector) Collect(ch chan<- prometheus.Metric) {
 
 		jsonData := ic.getData(devicePath)
 		for _, logProvider := range ic.LogMetricProviders {
-			// Fetching the metric object is delegated to the provider.
+			// Fetching the metric object is delegated to the provider
 			metric := logProvider.GetMetric(jsonData, devicePath)
 			ch <- metric
 		}
