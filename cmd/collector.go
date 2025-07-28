@@ -435,7 +435,7 @@ func newNvmeCollector(ocpEnabled bool) prometheus.Collector {
 		),
 	}
 
-	var collectors []prometheus.Collector
+	var collectors []pkg.MetricCollector
 	collectors = append(collectors, pkg.NewInfoMetricCollector(infoMetricProviders))
 	collectors = append(collectors, pkg.NewLogMetricCollector(logMetricProviders, getSmartLogData))
 
