@@ -1,0 +1,84 @@
+package main
+
+import (
+	"flag"
+	"fmt"
+	"log"
+	"net/http"
+	"regexp"
+	"strings"
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/E4-Computer-Engineering/nvme_exporter/pkg/utils"
+)
+
+var _supportedVersions = map[string]bool{
+	"2.9":  true,
+	"2.10": true,
+	"2.11": true,
+}
+
+func isSupportedVersion(version string) bool {
+	_, ok := _supportedVersions[version]
+
+	return ok
+}
+
+func main() {
+	flag.Usage = func() {
+		fmt.Println("nvme_exporter - Exports NVMe smart-log and smart-ocp-log metrics in Prometheus format")
+		fmt.Println("Validated with nvme smart-log field descriptions can be found on page 209 of:")
+		fmt.Println(
+			"https://nvmexpress.org/wp-content/uploads/NVM-Express-Base-Specification-Revision-2.1-2024.08.05-Ratified.pdf")
+		fmt.Println("Validated with nvme ocp-smart-log field descriptions can be found on page 24 of:")
+		fmt.Println("https://www.opencompute.org/documents/datacenter-nvme-ssd-specification-v2-5-pdf */")
+		fmt.Printf("It has been tested with nvme-cli versions:%v\n", _supportedVersions)
+		fmt.Println("Usage: nvme_exporter [options]")
+		flag.PrintDefaults()
+	}
+	port := flag.String("port", "9998", "port to listen on")
+	ocp := flag.Bool("ocp", false, "Enable OCP smart log metrics")
+	endpoint := flag.String("endpoint", "/metrics", "Specify the endpoint to expose metrics")
+	flag.Parse()
+
+	if !strings.HasPrefix(*endpoint, "/") {
+		*endpoint = "/" + *endpoint
+	}
+
+	err := utils.CheckCurrentUser("root")
+	if err != nil {
+		log.Printf("current user is not root: %s", err.Error())
+	}
+
+	// check for nvme-cli version
+	out, err := utils.ExecuteCommand("nvme", "--version")
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	re := regexp.MustCompile(`nvme version (\d+\.\d+)\.\d+`)
+	match := re.FindStringSubmatch(out)
+
+	if match != nil {
+		version := match[1]
+		if !isSupportedVersion(version) {
+			log.Printf("NVMe cli version %s not supported, supported versions are: %v", version, _supportedVersions)
+		}
+	} else {
+		log.Fatalf("Unable to find NVMe CLI version in output: %s", out)
+	}
+
+	prometheus.MustRegister(newNvmeCollector(*ocp))
+	http.Handle(*endpoint, promhttp.Handler())
+	log.Printf("Starting newNvmeCollector on port: %s, metrics endpoint: %s\n", *port, *endpoint)
+	log.Printf("newNvmeCollector is collecting OCP smart-log metrics: %t\n", *ocp)
+
+	server := &http.Server{
+		Addr:              ":" + *port,
+		ReadHeaderTimeout: 3 * time.Second,
+	}
+	log.Fatal(server.ListenAndServe())
+}
