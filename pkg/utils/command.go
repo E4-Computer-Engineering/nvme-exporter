@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"os/exec"
+	"os/user"
 	"strings"
 
 	"github.com/tidwall/gjson"
@@ -18,6 +19,11 @@ func getStringCmd(cmd string, args ...string) string {
 
 // ExecuteCommand executes a command and returns a nicely-formatted error if it fails.
 func ExecuteCommand(cmd string, args ...string) (string, error) {
+	_, err := exec.LookPath(cmd)
+	if err != nil {
+		return "", fmt.Errorf("error looking for %s cli command in path: %w", cmd, err)
+	}
+
 	command := exec.Command(cmd, args...)
 
 	out, err := command.CombinedOutput()
@@ -47,4 +53,17 @@ func ExecuteJSONCommand(cmd string, args ...string) (gjson.Result, error) {
 	ret := gjson.Parse(output)
 
 	return ret, nil
+}
+
+func CheckCurrentUser(wantedUser string) error {
+	currentUser, err := user.Current()
+	if err != nil {
+		return fmt.Errorf("error checking current user: %w", err)
+	}
+
+	if currentUser.Username != wantedUser {
+		return fmt.Errorf("current user %s is not wanted user %s", currentUser.Username, wantedUser)
+	}
+
+	return nil
 }

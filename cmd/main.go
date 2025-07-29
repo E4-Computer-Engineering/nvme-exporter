@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os/exec"
-	"os/user"
 	"regexp"
 	"strings"
 	"time"
@@ -50,20 +48,9 @@ func main() {
 		*endpoint = "/" + *endpoint
 	}
 
-	// check user
-	currentUser, err := user.Current()
+	err := utils.CheckCurrentUser("root")
 	if err != nil {
-		log.Fatalf("Error getting current user  %s\n", err)
-	}
-
-	if currentUser.Username != "root" {
-		log.Fatalln("Error: you must be root to use nvme-cli")
-	}
-
-	// check for nvme-cli executable
-	_, err = exec.LookPath("nvme")
-	if err != nil {
-		log.Fatalf("Cannot find NVMe cli command in path: %s\n", err)
+		log.Printf("current user is not root: %s", err.Error())
 	}
 
 	// check for nvme-cli version

@@ -42,11 +42,11 @@ type MetricCollector interface {
 // InfoMetricCollector implements MetricCollector and sends info metrics.
 type InfoMetricCollector struct {
 	// InfoMetricProviders is the list of providers for the info metric collector
-	InfoMetricProviders []InfoMetricProvider
+	InfoMetricProviders []MetricProvider
 }
 
 // NewInfoMetricCollector initializes and returns a new InfoMetricCollector object.
-func NewInfoMetricCollector(providers []InfoMetricProvider) *InfoMetricCollector {
+func NewInfoMetricCollector(providers []MetricProvider) *InfoMetricCollector {
 	return &InfoMetricCollector{InfoMetricProviders: providers}
 }
 
@@ -82,14 +82,14 @@ func (ic *InfoMetricCollector) CollectMetrics(ch chan<- prometheus.Metric, devic
 // InfoMetricCollector implements MetricCollector and sends smart log metrics.
 type LogMetricCollector struct {
 	// LogMetricProviders is the list of providers for the log metric collector
-	LogMetricProviders []LogMetricProvider
+	LogMetricProviders []MetricProvider
 
 	// getData receives the devicePath and gets the log JSON data
 	getData func(string) gjson.Result
 }
 
 // NewLogMetricCollector initializes and returns a new LogMetricCollector object.
-func NewLogMetricCollector(providers []LogMetricProvider, getData func(string) gjson.Result) *LogMetricCollector {
+func NewLogMetricCollector(providers []MetricProvider, getData func(string) gjson.Result) *LogMetricCollector {
 	return &LogMetricCollector{
 		LogMetricProviders: providers,
 		getData:            getData,

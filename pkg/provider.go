@@ -5,103 +5,45 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// DescData is a simple struct that pairs a pointer to a
-// prometheus.Desc and a prometheus.ValueType.
-type DescData struct {
-	// desc holds the pointer to the prometheus.desc object
+// MetricProvider is an object that computes the info metric
+// from the device data in JSON format.
+type MetricProvider struct {
+	// Desc holds the pointer to the prometheus.desc object
 	Desc *prometheus.Desc
 
 	// ValueType holds the prometheus.ValueType
 	ValueType prometheus.ValueType
-}
 
-// InfoMetricProvider is an object that computes the info metric
-// from the device data in JSON format.
-type InfoMetricProvider struct {
-	// DescData is embedded
-	DescData
-
-	// JSONKey is the string key that the object needs to access
+	// jsonKey is the string key that the object needs to access
 	// in the device JSON to fetch the metric float64 value
-	JSONKey string
+	jsonKey string
 }
 
-// NewInfoMetricProvider is the constructor for InfoMetricProvider objects.
-// It directly initializes the DescData struct and returns
-// the built InfoMetricProvider.
+// NewMetricProvider is the constructor for MetricProvider objects.
 // No need to return a pointer, since the struct is static data.
-func NewInfoMetricProvider(
+func NewMetricProvider(
 	desc *prometheus.Desc,
 	valueType prometheus.ValueType,
 	jsonKey string,
-) InfoMetricProvider {
-	return InfoMetricProvider{
-		DescData: DescData{
-			Desc:      desc,
-			ValueType: valueType,
-		},
-		JSONKey: jsonKey,
+) MetricProvider {
+	return MetricProvider{
+		Desc:      desc,
+		ValueType: valueType,
+		jsonKey:   jsonKey,
 	}
 }
 
 // GetMetric computes the metric from the
-// device data in JSON form.
-func (ip InfoMetricProvider) GetMetric(
-	device gjson.Result,
+// data in JSON form.
+func (ip MetricProvider) GetMetric(
+	data gjson.Result,
 	labels ...string,
 ) prometheus.Metric {
-	value := device.Get(ip.JSONKey).Float()
+	value := data.Get(ip.jsonKey).Float()
 
 	metric := prometheus.MustNewConstMetric(
 		ip.Desc,
 		ip.ValueType,
-		value,
-		labels...,
-	)
-
-	return metric
-}
-
-// LogMetricProvider is an object that computes the metric
-// from the smart log data in JSON format.
-type LogMetricProvider struct {
-	// DescData is embedded
-	DescData
-
-	// JSONKey is the string key that the object needs to access
-	// in the logs JSON to fetch the metric float64 value
-	JSONKey string
-}
-
-// NewLogMetricProvider is the constructor for LogMetricProvider objects.
-// It directly initializes the DescData struct and returns
-// the built LogMetricProvider.
-// No need to return a pointer, since the struct is static data.
-func NewLogMetricProvider(
-	desc *prometheus.Desc,
-	valueType prometheus.ValueType,
-	jsonKey string,
-) LogMetricProvider {
-	return LogMetricProvider{
-		DescData: DescData{
-			Desc:      desc,
-			ValueType: valueType,
-		},
-		JSONKey: jsonKey,
-	}
-}
-
-// GetMetric computes the metric from the
-// smart log data in JSON form.
-func (lp LogMetricProvider) GetMetric(
-	smartLog gjson.Result,
-	labels ...string,
-) prometheus.Metric {
-	value := smartLog.Get(lp.JSONKey).Float()
-
-	metric := prometheus.MustNewConstMetric(
-		lp.Desc,
-		lp.ValueType,
 		value,
 		labels...,
 	)

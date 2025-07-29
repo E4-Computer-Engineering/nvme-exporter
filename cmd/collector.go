@@ -37,8 +37,8 @@ func (f *ProviderFactory) CreateLogMetricProvider(
 	fqName string,
 	help string,
 	jsonKey string,
-) pkg.LogMetricProvider {
-	return pkg.NewLogMetricProvider(
+) pkg.MetricProvider {
+	return pkg.NewMetricProvider(
 		prometheus.NewDesc(
 			fqName,
 			help,
@@ -55,8 +55,8 @@ func (f *ProviderFactory) CreateInfoMetricProvider(
 	help string,
 	jsonKey string,
 	infoLabels []string,
-) pkg.InfoMetricProvider {
-	return pkg.NewInfoMetricProvider(
+) pkg.MetricProvider {
+	return pkg.NewMetricProvider(
 		prometheus.NewDesc(
 			fqName,
 			help,
@@ -83,7 +83,7 @@ func newNvmeCollector(ocpEnabled bool) prometheus.Collector {
 	}
 
 	// Info metrics
-	infoMetricProviders := []pkg.InfoMetricProvider{
+	infoMetricProviders := []pkg.MetricProvider{
 		gaugeValueFactory.CreateInfoMetricProvider(
 			"nvme_namespace",
 			"",
@@ -117,7 +117,7 @@ func newNvmeCollector(ocpEnabled bool) prometheus.Collector {
 	}
 
 	// Smart-log metrics
-	logMetricProviders := []pkg.LogMetricProvider{
+	logMetricProviders := []pkg.MetricProvider{
 		gaugeValueFactory.CreateLogMetricProvider(
 			"nvme_critical_warning",
 			"Critical warnings for the state of the controller",
@@ -247,7 +247,7 @@ func newNvmeCollector(ocpEnabled bool) prometheus.Collector {
 	}
 
 	// OCP smart-log metrics
-	ocpLogMetricProviders := []pkg.LogMetricProvider{
+	ocpLogMetricProviders := []pkg.MetricProvider{
 		counterValueFactory.CreateLogMetricProvider(
 			"nvme_physical_media_units_written_hi",
 			"Physical meda units written high",
