@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"encoding/json"
 	"fmt"
 	"os/exec"
 	"os/user"
@@ -66,4 +67,13 @@ func CheckCurrentUser(wantedUser string) error {
 	}
 
 	return nil
+}
+
+// MapToJSONString converts a map to a JSON string.
+func MapToJSONString(data map[string]interface{}) string {
+	jsonBytes, err := json.Marshal(data)
+	if err != nil {
+		return "{}"
+	}
+	return string(jsonBytes)
 }
