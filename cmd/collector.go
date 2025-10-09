@@ -22,7 +22,8 @@ func getSmartLogData(devicePath string) gjson.Result {
 func getOcpSmartLogData(devicePath string) gjson.Result {
 	ocpSmartLog, err := utils.ExecuteJSONCommand("nvme", "ocp", "smart-add-log", devicePath, "-o", "json")
 	if err != nil {
-		log.Printf("OCP metrics not supported or error running smart-add-log %s -o json: %s (continuing with standard metrics)\n", devicePath, err)
+		log.Printf("OCP metrics not supported or error running smart-add-log %s -o json: %s "+
+			"(continuing with standard metrics)\n", devicePath, err)
 		// Return empty result instead of crashing
 		return gjson.Result{}
 	}
@@ -122,7 +123,8 @@ func newNvmeCollector(collectorStates map[string]bool) prometheus.Collector {
 	logMetricProviders := []pkg.MetricProvider{
 		gaugeValueFactory.CreateLogMetricProvider(
 			"nvme_critical_warning",
-			"Critical warnings for the controller state. Bits indicate spare capacity, temperature, degraded reliability, or read-only mode",
+			"Critical warnings for the controller state. Bits indicate spare capacity, temperature, "+
+				"degraded reliability, or read-only mode",
 			"critical_warning",
 		),
 		gaugeValueFactory.CreateLogMetricProvider(

@@ -23,6 +23,7 @@ const _minimumSupportedVersion = "2.8"
 var (
 	validationState = struct {
 		sync.RWMutex
+
 		isValid      bool
 		errorMessage string
 	}{
@@ -32,17 +33,18 @@ var (
 	scrapeFailuresTotal = prometheus.NewCounter(
 		prometheus.CounterOpts{
 			Name: "nvme_exporter_scrape_failures_total",
-			Help: "Total number of scrape failures due to validation errors (not root, nvme-cli not found, or unsupported version)",
+			Help: "Total number of scrape failures due to validation errors " +
+				"(not root, nvme-cli not found, or unsupported version)",
 		},
 	)
 )
 
-// Collector represents a metric collector with enable/disable capability
+// Collector represents a metric collector with enable/disable capability.
 type Collector struct {
-	name          string
-	defaultState  bool
-	enabled       *bool
-	description   string
+	name         string
+	defaultState bool
+	enabled      *bool
+	description  string
 }
 
 var (
@@ -91,6 +93,7 @@ func isSupportedVersion(version string) bool {
 	if vMajor > minMajor {
 		return true
 	}
+
 	if vMajor < minMajor {
 		return false
 	}
@@ -101,6 +104,7 @@ func isSupportedVersion(version string) bool {
 func setValidationError(msg string) {
 	validationState.Lock()
 	defer validationState.Unlock()
+
 	validationState.isValid = false
 	validationState.errorMessage = msg
 }
@@ -108,14 +112,15 @@ func setValidationError(msg string) {
 func isValidationValid() bool {
 	validationState.RLock()
 	defer validationState.RUnlock()
+
 	return validationState.isValid
 }
 
 func initCollectorFlags() {
 	// Register flags for each collector
 	for name, collector := range collectors {
-		flagName := fmt.Sprintf("collector.%s", name)
-		noFlagName := fmt.Sprintf("no-collector.%s", name)
+		flagName := "collector." + name
+		noFlagName := "no-collector." + name
 
 		defaultValue := collector.defaultState
 
@@ -138,10 +143,8 @@ func initCollectorFlags() {
 		// Store both flags so we can resolve them later
 		collectors[name] = collector
 
-		// Store the disable flag separately for later processing
-		if disableFlag != nil {
-			// We'll handle this in resolveCollectorStates
-		}
+		// The disable flag is handled in resolveCollectorStates
+		_ = disableFlag
 	}
 }
 
@@ -158,19 +161,20 @@ func resolveCollectorStates() map[string]bool {
 		}
 
 		// Check if explicit enable flag was set
-		enableFlagName := fmt.Sprintf("collector.%s", name)
-		disableFlagName := fmt.Sprintf("no-collector.%s", name)
+		enableFlagName := "collector." + name
+		disableFlagName := "no-collector." + name
 
 		// Check if the flag was explicitly set
 		explicitlyEnabled := false
 		explicitlyDisabled := false
 
-		flag.Visit(func(f *flag.Flag) {
-			if f.Name == enableFlagName {
+		flag.Visit(func(flagItem *flag.Flag) {
+			if flagItem.Name == enableFlagName {
 				explicitlyEnabled = true
 				enabled = *collector.enabled
 			}
-			if f.Name == disableFlagName {
+
+			if flagItem.Name == disableFlagName {
 				explicitlyDisabled = true
 			}
 		})
@@ -188,50 +192,107 @@ func resolveCollectorStates() map[string]bool {
 	return states
 }
 
+func printUsage() {
+	fmt.Println("nvme_exporter - Prometheus exporter for NVMe device metrics")
+	fmt.Println("\nExports NVMe SMART log and OCP SMART log metrics in Prometheus format.")
+	fmt.Println("\nDocumentation:")
+	fmt.Println("  NVMe SMART log specification (page 209):")
+	fmt.Println("    https://nvmexpress.org/wp-content/uploads/" +
+		"NVM-Express-Base-Specification-Revision-2.1-2024.08.05-Ratified.pdf")
+	fmt.Println("  OCP SMART log specification (page 24):")
+	fmt.Println("    https://www.opencompute.org/documents/datacenter-nvme-ssd-specification-v2-5-pdf")
+	fmt.Printf("\nMinimum supported nvme-cli version: %s\n", _minimumSupportedVersion)
+	fmt.Println("\nUsage: nvme_exporter [options]")
+	fmt.Println("\nWeb server options:")
+	fmt.Println("  --web.listen-address string")
+	fmt.Println("        Address on which to expose metrics and web interface (default \":9998\")")
+	fmt.Println("  --web.telemetry-path string")
+	fmt.Println("        Path under which to expose metrics (default \"/metrics\")")
+	fmt.Println("\nCollector options:")
+	fmt.Println("  --collector.<name>")
+	fmt.Println("        Enable the specified collector (enabled by default)")
+	fmt.Println("  --no-collector.<name>")
+	fmt.Println("        Disable the specified collector")
+	fmt.Println("  --collector.disable-defaults")
+	fmt.Println("        Disable all default collectors")
+	fmt.Println("\nAvailable collectors:")
+
+	for name, collector := range collectors {
+		defaultStr := ""
+		if collector.defaultState {
+			defaultStr = " (enabled by default)"
+		}
+
+		fmt.Printf("  %-10s %s%s\n", name, collector.description, defaultStr)
+	}
+
+	fmt.Println("\nExamples:")
+	fmt.Println("  # Start with all default collectors on default port")
+	fmt.Println("  nvme_exporter")
+	fmt.Println("\n  # Listen on a specific address and port")
+	fmt.Println("  nvme_exporter --web.listen-address=\":9100\"")
+	fmt.Println("\n  # Disable OCP metrics collection")
+	fmt.Println("  nvme_exporter --no-collector.ocp")
+	fmt.Println("\n  # Only collect SMART metrics (disable info and OCP)")
+	fmt.Println("  nvme_exporter --collector.disable-defaults --collector.smart")
+}
+
+func validatePrerequisites() {
+	// Validate current user
+	err := utils.CheckCurrentUser("root")
+	if err != nil {
+		log.Printf("WARNING: current user is not root: %s", err.Error())
+		log.Printf("WARNING: exporter will continue running but scrapes will fail")
+		setValidationError("not running as root: " + err.Error())
+
+		return
+	}
+
+	// Check for nvme-cli version
+	validateNVMeCLI()
+}
+
+func validateNVMeCLI() {
+	out, err := utils.ExecuteCommand("nvme", "--version")
+	if err != nil {
+		log.Printf("WARNING: nvme binary not found or error executing: %s", err.Error())
+		log.Printf("WARNING: exporter will continue running but scrapes will fail")
+		setValidationError("nvme binary not available: " + err.Error())
+
+		return
+	}
+
+	re := regexp.MustCompile(`nvme version (\d+\.\d+)`)
+	match := re.FindStringSubmatch(out)
+
+	if match == nil {
+		log.Printf("WARNING: Unable to find NVMe CLI version in output: %s", out)
+		log.Printf("WARNING: exporter will continue running but scrapes may fail")
+		setValidationError("unable to parse nvme-cli version from output: " + out)
+
+		return
+	}
+
+	version := match[1]
+	if !isSupportedVersion(version) {
+		log.Printf("WARNING: NVMe cli version %s not supported, minimum required version is %s",
+			version, _minimumSupportedVersion)
+		log.Printf("WARNING: exporter will continue running but scrapes may fail or produce incorrect data")
+		setValidationError(fmt.Sprintf("unsupported nvme-cli version %s (minimum: %s)",
+			version, _minimumSupportedVersion))
+
+		return
+	}
+
+	log.Printf("NVMe cli version %s detected and supported", version)
+}
+
 func main() {
 	// Initialize collector flags before parsing
 	initCollectorFlags()
 
-	flag.Usage = func() {
-		fmt.Println("nvme_exporter - Prometheus exporter for NVMe device metrics")
-		fmt.Println("\nExports NVMe SMART log and OCP SMART log metrics in Prometheus format.")
-		fmt.Println("\nDocumentation:")
-		fmt.Println("  NVMe SMART log specification (page 209):")
-		fmt.Println("    https://nvmexpress.org/wp-content/uploads/NVM-Express-Base-Specification-Revision-2.1-2024.08.05-Ratified.pdf")
-		fmt.Println("  OCP SMART log specification (page 24):")
-		fmt.Println("    https://www.opencompute.org/documents/datacenter-nvme-ssd-specification-v2-5-pdf")
-		fmt.Printf("\nMinimum supported nvme-cli version: %s\n", _minimumSupportedVersion)
-		fmt.Println("\nUsage: nvme_exporter [options]")
-		fmt.Println("\nWeb server options:")
-		fmt.Println("  --web.listen-address string")
-		fmt.Println("        Address on which to expose metrics and web interface (default \":9998\")")
-		fmt.Println("  --web.telemetry-path string")
-		fmt.Println("        Path under which to expose metrics (default \"/metrics\")")
-		fmt.Println("\nCollector options:")
-		fmt.Println("  --collector.<name>")
-		fmt.Println("        Enable the specified collector (enabled by default)")
-		fmt.Println("  --no-collector.<name>")
-		fmt.Println("        Disable the specified collector")
-		fmt.Println("  --collector.disable-defaults")
-		fmt.Println("        Disable all default collectors")
-		fmt.Println("\nAvailable collectors:")
-		for name, collector := range collectors {
-			defaultStr := ""
-			if collector.defaultState {
-				defaultStr = " (enabled by default)"
-			}
-			fmt.Printf("  %-10s %s%s\n", name, collector.description, defaultStr)
-		}
-		fmt.Println("\nExamples:")
-		fmt.Println("  # Start with all default collectors on default port")
-		fmt.Println("  nvme_exporter")
-		fmt.Println("\n  # Listen on a specific address and port")
-		fmt.Println("  nvme_exporter --web.listen-address=\":9100\"")
-		fmt.Println("\n  # Disable OCP metrics collection")
-		fmt.Println("  nvme_exporter --no-collector.ocp")
-		fmt.Println("\n  # Only collect SMART metrics (disable info and OCP)")
-		fmt.Println("  nvme_exporter --collector.disable-defaults --collector.smart")
-	}
+	flag.Usage = printUsage
+
 	// Define flags following Prometheus node_exporter conventions
 	listenAddress := flag.String("web.listen-address", ":9998", "Address on which to expose metrics and web interface")
 	metricsPath := flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics")
@@ -246,44 +307,14 @@ func main() {
 	prometheus.MustRegister(scrapeFailuresTotal)
 
 	// Validate prerequisites - log errors but don't exit
-	err := utils.CheckCurrentUser("root")
-	if err != nil {
-		log.Printf("WARNING: current user is not root: %s", err.Error())
-		log.Printf("WARNING: exporter will continue running but scrapes will fail")
-		setValidationError(fmt.Sprintf("not running as root: %s", err.Error()))
-	}
-
-	// check for nvme-cli version
-	out, err := utils.ExecuteCommand("nvme", "--version")
-	if err != nil {
-		log.Printf("WARNING: nvme binary not found or error executing: %s", err.Error())
-		log.Printf("WARNING: exporter will continue running but scrapes will fail")
-		setValidationError(fmt.Sprintf("nvme binary not available: %s", err.Error()))
-	} else {
-		re := regexp.MustCompile(`nvme version (\d+\.\d+)`)
-		match := re.FindStringSubmatch(out)
-
-		if match != nil {
-			version := match[1]
-			if !isSupportedVersion(version) {
-				log.Printf("WARNING: NVMe cli version %s not supported, minimum required version is %s", version, _minimumSupportedVersion)
-				log.Printf("WARNING: exporter will continue running but scrapes may fail or produce incorrect data")
-				setValidationError(fmt.Sprintf("unsupported nvme-cli version %s (minimum: %s)", version, _minimumSupportedVersion))
-			} else {
-				log.Printf("NVMe cli version %s detected and supported", version)
-			}
-		} else {
-			log.Printf("WARNING: Unable to find NVMe CLI version in output: %s", out)
-			log.Printf("WARNING: exporter will continue running but scrapes may fail")
-			setValidationError(fmt.Sprintf("unable to parse nvme-cli version from output: %s", out))
-		}
-	}
+	validatePrerequisites()
 
 	// Resolve collector states based on flags
 	collectorStates := resolveCollectorStates()
 
 	// Log enabled collectors
 	log.Printf("Enabled collectors:")
+
 	for name, enabled := range collectorStates {
 		if enabled {
 			log.Printf("  - %s", name)
@@ -300,13 +331,15 @@ func main() {
 	http.Handle(*metricsPath, promhttp.Handler())
 
 	// Add a landing page like node_exporter
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" {
-			http.NotFound(w, r)
+	http.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/" {
+			http.NotFound(writer, request)
+
 			return
 		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		fmt.Fprintf(w, `<html>
+
+		writer.Header().Set("Content-Type", "text/html; charset=utf-8")
+		fmt.Fprintf(writer, `<html>
 <head><title>NVMe Exporter</title></head>
 <body>
 <h1>NVMe Exporter</h1>

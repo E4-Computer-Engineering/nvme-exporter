@@ -19,16 +19,20 @@ func GetDevices() []gjson.Result {
 		if scrapeFailureIncrementer != nil {
 			scrapeFailureIncrementer()
 		}
+
 		log.Printf("Skipping device query due to validation failure")
+
 		return []gjson.Result{}
 	}
 
 	devicesJSON, err := utils.ExecuteJSONCommand("nvme", "list", "-o", "json")
 	if err != nil {
 		log.Printf("Error running nvme list -o json: %s\n", err)
+
 		if scrapeFailureIncrementer != nil {
 			scrapeFailureIncrementer()
 		}
+
 		return []gjson.Result{}
 	}
 
@@ -155,7 +159,7 @@ func (ic *InfoMetricCollector) CollectMetrics(ch chan<- prometheus.Metric, devic
 	}
 }
 
-// InfoMetricCollector implements MetricCollector and sends smart log metrics.
+// LogMetricCollector implements MetricCollector and sends smart log metrics.
 type LogMetricCollector struct {
 	// LogMetricProviders is the list of providers for the log metric collector
 	LogMetricProviders []MetricProvider
@@ -179,7 +183,7 @@ func (lc *LogMetricCollector) Describe(ch chan<- *prometheus.Desc) {
 	}
 }
 
-// Collect gets the smart log data and sends all log metrics through the channel.
+// CollectMetrics gets the smart log data and sends all log metrics through the channel.
 func (lc *LogMetricCollector) CollectMetrics(ch chan<- prometheus.Metric, device gjson.Result) {
 	devicePath := device.Get("DevicePath").String()
 
@@ -230,23 +234,23 @@ func (cc *CompositeCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 }
 
-// SetValidationChecker allows injecting a validation check function
-// to determine if scrapes should proceed
+// ValidationChecker allows injecting a validation check function
+// to determine if scrapes should proceed.
 type ValidationChecker func() bool
 
 var validationChecker ValidationChecker
 
-// SetValidationChecker sets the global validation checker
+// SetValidationChecker sets the global validation checker.
 func SetValidationChecker(checker ValidationChecker) {
 	validationChecker = checker
 }
 
-// IncrementScrapeFailure is called when a scrape fails due to validation errors
+// ScrapeFailureIncrementer is called when a scrape fails due to validation errors.
 type ScrapeFailureIncrementer func()
 
 var scrapeFailureIncrementer ScrapeFailureIncrementer
 
-// SetScrapeFailureIncrementer sets the global scrape failure incrementer
+// SetScrapeFailureIncrementer sets the global scrape failure incrementer.
 func SetScrapeFailureIncrementer(incrementer ScrapeFailureIncrementer) {
 	scrapeFailureIncrementer = incrementer
 }

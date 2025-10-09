@@ -1,11 +1,13 @@
 package utils
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os/exec"
 	"os/user"
 	"strings"
+	"time"
 
 	"github.com/tidwall/gjson"
 )
@@ -25,7 +27,10 @@ func ExecuteCommand(cmd string, args ...string) (string, error) {
 		return "", fmt.Errorf("error looking for %s cli command in path: %w", cmd, err)
 	}
 
-	command := exec.Command(cmd, args...)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	command := exec.CommandContext(ctx, cmd, args...)
 
 	out, err := command.CombinedOutput()
 	if err != nil {
@@ -75,5 +80,6 @@ func MapToJSONString(data map[string]interface{}) string {
 	if err != nil {
 		return "{}"
 	}
+
 	return string(jsonBytes)
 }

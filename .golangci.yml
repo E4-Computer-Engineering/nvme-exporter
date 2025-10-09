@@ -10,6 +10,9 @@ linters:
     - ireturn
     - maintidx
     - mnd
+    - wsl
+  enable:
+    - wsl_v5
   settings:
     depguard:
       rules:
@@ -20,8 +23,16 @@ linters:
           deny:
             - pkg: io/ioutil
               desc: 'replaced by io and os packages since Go 1.16: https://tip.golang.org/doc/go1.16#ioutil'
+    revive:
+      rules:
+        - name: var-naming
+          disabled: true
     varnamelen:
       min-name-length: 2
+    wsl_v5:
+      allow-first-in-block: true
+      allow-whole-block: false
+      branch-max-lines: 2
   exclusions:
     generated: lax
     presets:
