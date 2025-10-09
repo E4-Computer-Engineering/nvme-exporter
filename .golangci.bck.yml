@@ -1,0 +1,38 @@
+# https://golangci-lint.run/usage/linters/
+linters:
+  enable-all: true
+  disable:
+    - exhaustruct
+    - exportloopref
+    - err113
+    - funlen
+    - gochecknoglobals
+    - mnd
+    # reconsider
+    - ireturn
+    # reconsider
+    - maintidx
+    # reconsider
+    - forbidigo
+
+linters-settings:
+  varnamelen:
+    min-name-length: 2
+  gci:
+    sections:
+        - standard
+        - default
+        - localmodule
+  goimports:
+    local-prefixes: github.com/E4-Computer-Engineering/nvme_exporter
+  goconst:
+    ignore-tests: true
+  depguard:
+    rules:
+      main:
+        list-mode: lax
+        files:
+          - $all
+        deny:
+          - pkg: io/ioutil
+            desc: "replaced by io and os packages since Go 1.16: https://tip.golang.org/doc/go1.16#ioutil"
