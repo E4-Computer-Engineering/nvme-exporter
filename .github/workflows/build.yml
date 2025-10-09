@@ -34,10 +34,10 @@ jobs:
       - name: Ensure go.mod is already tidied
         run: go mod tidy && git diff --no-patch --exit-code
       - name: Run linters
-        uses: golangci/golangci-lint-action@v6.3.2
+        uses: golangci/golangci-lint-action@v8
         with:
           # renovate: depName=golangci/golangci-lint datasource=github-releases
-          version: v1.63.4
+          version: v2.5.0
           args: --timeout=3m0s
       - name: Build with Goreleaser
         uses: goreleaser/goreleaser-action@v6.2.1

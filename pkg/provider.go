@@ -39,7 +39,23 @@ func (ip MetricProvider) GetMetric(
 	data gjson.Result,
 	labels ...string,
 ) prometheus.Metric {
-	value := data.Get(ip.jsonKey).Float()
+	// If data is invalid/empty (e.g., OCP not supported), skip metric creation
+	if !data.Exists() {
+		return nil
+	}
+
+	result := data.Get(ip.jsonKey)
+
+	// Handle both scalar values (v2.8) and object values (v2.11+)
+	// In v2.11+, some fields like critical_warning are objects with a "value" field
+	var value float64
+	if result.IsObject() {
+		// Try to get the "value" field from the object
+		value = result.Get("value").Float()
+	} else {
+		// Direct numeric value
+		value = result.Float()
+	}
 
 	metric := prometheus.MustNewConstMetric(
 		ip.Desc,
