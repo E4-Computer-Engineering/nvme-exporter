@@ -26,7 +26,7 @@ Specification versions of reference:
 
 ### Supported NVMe CLI Versions
 
-Supports [NVMe CLI](https://github.com/linux-nvme/nvme-cli) versions **2.8 and above**.
+Supports [NVMe CLI](https://github.com/linux-nvme/nvme-cli) versions **2.3 and above**.
 
 > **Note**: The exporter will continue to run with unsupported versions, but may produce incorrect data or fail scrapes.
 
@@ -158,7 +158,7 @@ docker run --rm -d --network=host --privileged nvme_exporter \
 
 | Metric Name | Type | Description |
 |-------------|------|-------------|
-| `nvme_exporter_scrape_failures_total` | Counter | Total number of scrape failures due to validation errors (not root, nvme-cli not found, or unsupported version) |
+| `nvme_exporter_scrape_failures_total` | Counter | Total number of scrape failures due to fatal validation errors (not root or nvme-cli not found) |
 
 ### NVMe Device Metrics
 

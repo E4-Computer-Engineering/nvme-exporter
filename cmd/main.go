@@ -18,7 +18,7 @@ import (
 	"github.com/E4-Computer-Engineering/nvme_exporter/pkg/utils"
 )
 
-const _minimumSupportedVersion = "2.8"
+const _minimumSupportedVersion = "2.3"
 
 var (
 	validationState = struct {
@@ -33,8 +33,8 @@ var (
 	scrapeFailuresTotal = prometheus.NewCounter(
 		prometheus.CounterOpts{
 			Name: "nvme_exporter_scrape_failures_total",
-			Help: "Total number of scrape failures due to validation errors " +
-				"(not root, nvme-cli not found, or unsupported version)",
+			Help: "Total number of scrape failures due to fatal validation errors " +
+				"(not root or nvme-cli not found)",
 		},
 	)
 )
@@ -278,8 +278,8 @@ func validateNVMeCLI() {
 		log.Printf("WARNING: NVMe cli version %s not supported, minimum required version is %s",
 			version, _minimumSupportedVersion)
 		log.Printf("WARNING: exporter will continue running but scrapes may fail or produce incorrect data")
-		setValidationError(fmt.Sprintf("unsupported nvme-cli version %s (minimum: %s)",
-			version, _minimumSupportedVersion))
+		// Note: We do NOT set validation error for version issues - we still attempt to collect data
+		// Only fatal errors (not root, nvme binary missing) should block collection entirely
 
 		return
 	}
