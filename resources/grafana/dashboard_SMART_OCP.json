@@ -1,4 +1,5 @@
- "annotations": {
+{
+  "annotations": {
     "list": [
       {
         "builtIn": 1,
@@ -24,7 +25,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 9,
+  "id": null,
   "links": [
     {
       "asDropdown": false,
@@ -658,19 +659,6 @@
               "legendFormat": "{{device}}",
               "range": true,
               "refId": "A"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${datasource}"
-              },
-              "editorMode": "code",
-              "expr": "nvme_num",
-              "hide": false,
-              "instant": false,
-              "legendFormat": "__auto",
-              "range": true,
-              "refId": "B"
             }
           ],
           "title": "Number of Error Information Log Entries Over Time",
@@ -1035,7 +1023,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "description": "",
+          "description": "Per-device hardware inventory (model, serial, firmware, generic path) with the physical capacity reported by the exporter info metrics.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1049,27 +1037,7 @@
                 },
                 "inspect": false
               },
-              "mappings": [
-                {
-                  "options": {
-                    "live": {
-                      "color": "green",
-                      "index": 0
-                    }
-                  },
-                  "type": "value"
-                },
-                {
-                  "options": {
-                    "pattern": "!live",
-                    "result": {
-                      "color": "red",
-                      "index": 1
-                    }
-                  },
-                  "type": "regex"
-                }
-              ],
+              "mappings": [],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -1078,7 +1046,7 @@
                   }
                 ]
               },
-              "unit": "none"
+              "unit": "bytes"
             },
             "overrides": []
           },
@@ -1113,7 +1081,7 @@
               "disableTextWrap": false,
               "editorMode": "code",
               "exemplar": false,
-              "expr": "node_nvme_info",
+              "expr": "nvme_physical_size{instance=~\"[[node]]\",device=~\"[[device]]\"}",
               "format": "table",
               "fullMetaSearch": false,
               "includeNullMetadata": true,
@@ -1136,21 +1104,27 @@
                     "aggregations": [],
                     "operation": "groupby"
                   },
-                  "firmware_revision": {
+                  "model_number": {
                     "aggregations": [],
                     "operation": "groupby"
                   },
-                  "model": {
+                  "serial_number": {
                     "aggregations": [],
                     "operation": "groupby"
                   },
-                  "serial": {
+                  "firmware": {
                     "aggregations": [],
                     "operation": "groupby"
                   },
-                  "state": {
+                  "generic_path": {
                     "aggregations": [],
                     "operation": "groupby"
+                  },
+                  "Value": {
+                    "aggregations": [
+                      "lastNotNull"
+                    ],
+                    "operation": "aggregate"
                   }
                 }
               }
@@ -1501,7 +1475,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "description": "NVME metrics are collected via \"text file Node exporter\", this metric reports how long ago the letrics have been collected by the local cronjob.",
+          "description": "Contains the number of unsafe shutdowns. This count is incremented when a Clean Shutdown Notification is not received prior to loss of power.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -2401,7 +2375,7 @@
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "nvme_data_units_written{device=~\"[[device]]\"}",
+              "expr": "nvme_data_units_written{instance=~\"[[node]]\",device=~\"[[device]]\"}",
               "instant": true,
               "legendFormat": "{{device}}",
               "range": false,
@@ -2478,7 +2452,7 @@
               "refId": "A"
             }
           ],
-          "title": "Host Read Commands per",
+          "title": "Host Read Commands",
           "transparent": true,
           "type": "stat"
         },
@@ -2487,7 +2461,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "description": "NVME SMART metric data_units_read_total",
+          "description": "Number of SMART Host Write Commands completed by the controller (lifetime count).",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -2541,14 +2515,14 @@
               },
               "editorMode": "code",
               "exemplar": false,
-              "expr": "nvme_host_write_commands{device=~\"[[device]]\"}",
+              "expr": "nvme_host_write_commands{instance=~\"[[node]]\",device=~\"[[device]]\"}",
               "instant": true,
               "legendFormat": "{{device}}",
               "range": false,
               "refId": "A"
             }
           ],
-          "title": "Host Write Commands per Second for $node",
+          "title": "Host Write Commands",
           "transparent": true,
           "type": "stat"
         }
@@ -2701,7 +2675,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "description": "Calculated as (1 - Hostwrites/TBW) following SNIA specifications on Endurance.\nThis visualization shows the following 3 thresholds:\nFrom 100 -> 50 = The device can be considered healthy (blue)\nFrom 50 - 25 -> The disk is Worn and performance might already be degraded (yellow)\nBelow 25 -> The disk is potentially ready for EOL",
+          "description": "Device Remaining Life % = 100 - nvme_percent_used, the vendor's own estimate of consumed endurance (already accounts for real cell endurance and write amplification). Thresholds: 100->50 healthy (blue), 50->25 worn (yellow), below 25 near EOL (pink).",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -2817,15 +2791,21 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "red",
                     "value": null
                   },
                   {
-                    "color": "red",
-                    "value": 80
+                    "color": "#EAB839",
+                    "value": 30
+                  },
+                  {
+                    "color": "green",
+                    "value": 90
                   }
                 ]
-              }
+              },
+              "unit": "d",
+              "min": 0
             },
             "overrides": [
               {
@@ -2882,22 +2862,23 @@
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "device:projected_DRL_8h",
+              "expr": "device:DRL_days_remaining{device=~\"[[device]]\"}",
               "instant": false,
               "legendFormat": "{{device}}",
               "range": true,
               "refId": "A"
             }
           ],
-          "title": "Estimated DRL in 8 hours",
-          "type": "timeseries"
+          "title": "Estimated days until End-of-Life (at current write rate)",
+          "type": "timeseries",
+          "description": "Estimated days until the vendor wear estimate (nvme_percent_used) reaches 100%, at the current write rate. The wear rate comes from the continuous data-units counter; total endurance is calibrated from percent_used (no fixed P/E assumption). Lower is worse: red below 30 days, yellow below 90, green above."
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "description": "DWPD is calculated as TBW/(365 X 5 X disk_capacity)\nfollowing SNIA specifications on Endurance.\nThe blue threshold indicates a DWPD compatible with the value provided by the vendor. Orange indicates a value above the recommended DWPD. In this latter case, the disk might meet its EOL sooner than expected.",
+          "description": "Rated DWPD = implied_TBW / (5 years x capacity). implied_TBW is derived from the vendor's nvme_percent_used wear estimate (no fixed P/E assumption). Blue = within the vendor-rated DWPD; orange (>1) = above it, so the disk may reach EOL sooner than expected. Adjust the 5-year window in the recording rule to match the drive warranty.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -2969,9 +2950,159 @@
           ],
           "title": "DWPD (Given Current Usage) ",
           "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "description": "Observed drive-writes-per-day over the last 24h (host bytes written per day / capacity). Reflects the actual recent workload, independent of any endurance assumption.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 2,
+              "mappings": [],
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "none"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 51
+          },
+          "id": 78,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.5.2",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "device:DWPD_observed{device=~\"[[device]]\"}",
+              "format": "time_series",
+              "instant": true,
+              "legendFormat": "{{device}}",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "DWPD (Observed, last 24h)",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "description": "Lifetime-average drive-writes-per-day = total host writes / capacity / powered-on days. NOTE: based on power-on hours, not calendar time, so a frequently-powered-off drive reads high.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 2,
+              "mappings": [],
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "none"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 51
+          },
+          "id": 79,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.5.2",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "device:DWPD_lifetime{device=~\"[[device]]\"}",
+              "format": "time_series",
+              "instant": true,
+              "legendFormat": "{{device}}",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "DWPD (Lifetime average)",
+          "type": "stat"
         }
       ],
-      "title": "Node 100.127.205.166:9188 OCP Metrics",
+      "title": "Disk Endurance & Efficiency (OCP)",
       "type": "row"
     }
   ],
@@ -2997,11 +3128,9 @@
       },
       {
         "current": {
-          "text": [
-            "100.127.205.166:9188"
-          ],
+          "text": "All",
           "value": [
-            "100.127.205.166:9188"
+            "$__all"
           ]
         },
         "datasource": {
@@ -3067,7 +3196,7 @@
     ]
   },
   "timezone": "",
-  "title": "NVME_OCP_Dashboard Copy",
+  "title": "NVMe SMART & OCP Dashboard",
   "uid": "dee59s62kbchsb",
   "version": 29,
   "weekStart": ""
