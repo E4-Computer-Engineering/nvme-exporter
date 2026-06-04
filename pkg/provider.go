@@ -46,6 +46,13 @@ func (ip MetricProvider) GetMetric(
 
 	result := data.Get(ip.jsonKey)
 
+	// If the key is absent (e.g. a field not reported by this firmware/version),
+	// skip the metric entirely. Emitting 0 would be misleading and, for counters,
+	// would look like a counter reset to Prometheus.
+	if !result.Exists() {
+		return nil
+	}
+
 	// Handle both scalar values (v2.8) and object values (v2.11+)
 	// In v2.11+, some fields like critical_warning are objects with a "value" field
 	var value float64
