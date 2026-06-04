@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
-	"os/user"
 	"strings"
 	"time"
 
@@ -61,14 +61,12 @@ func ExecuteJSONCommand(cmd string, args ...string) (gjson.Result, error) {
 	return ret, nil
 }
 
-func CheckCurrentUser(wantedUser string) error {
-	currentUser, err := user.Current()
-	if err != nil {
-		return fmt.Errorf("error checking current user: %w", err)
-	}
-
-	if currentUser.Username != wantedUser {
-		return fmt.Errorf("current user %s is not wanted user %s", currentUser.Username, wantedUser)
+// CheckRoot verifies the process is running with root privileges by
+// checking the effective user ID. This is more reliable than comparing
+// the username, which misses uid-0 accounts not literally named "root".
+func CheckRoot() error {
+	if euid := os.Geteuid(); euid != 0 {
+		return fmt.Errorf("effective uid is %d, not 0 (root)", euid)
 	}
 
 	return nil
