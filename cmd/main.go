@@ -117,34 +117,26 @@ func isValidationValid() bool {
 }
 
 func initCollectorFlags() {
-	// Register flags for each collector
+	// collector is a *Collector, so assigning collector.enabled mutates the
+	// entry stored in the map directly.
 	for name, collector := range collectors {
-		flagName := "collector." + name
-		noFlagName := "no-collector." + name
-
 		defaultValue := collector.defaultState
 
-		// --collector.X flag to enable
-		enableFlag := flag.Bool(
-			flagName,
+		// --collector.X enables the collector.
+		collector.enabled = flag.Bool(
+			"collector."+name,
 			defaultValue,
 			fmt.Sprintf("Enable the %s collector (default: %t)", collector.description, defaultValue),
 		)
 
-		// --no-collector.X flag to disable
-		disableFlag := flag.Bool(
-			noFlagName,
+		// --no-collector.X disables it. We only need the flag registered so it
+		// parses and flag.Visit can detect it in resolveCollectorStates; its
+		// value is never read directly.
+		flag.Bool(
+			"no-collector."+name,
 			false,
 			fmt.Sprintf("Disable the %s collector", collector.description),
 		)
-
-		collector.enabled = enableFlag
-
-		// Store both flags so we can resolve them later
-		collectors[name] = collector
-
-		// The disable flag is handled in resolveCollectorStates
-		_ = disableFlag
 	}
 }
 
