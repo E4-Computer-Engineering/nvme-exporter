@@ -346,6 +346,12 @@ func main() {
 	server := &http.Server{
 		Addr:              *listenAddress,
 		ReadHeaderTimeout: 3 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		// A scrape shells out to nvme per device (each bounded by the 30s
+		// command timeout), so WriteTimeout is kept well above a normal
+		// scrape to avoid truncating responses on hosts with many devices.
+		WriteTimeout: 60 * time.Second,
+		IdleTimeout:  120 * time.Second,
 	}
 	log.Fatal(server.ListenAndServe())
 }
