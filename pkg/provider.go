@@ -17,6 +17,13 @@ type MetricProvider struct {
 	// jsonKey is the string key that the object needs to access
 	// in the device JSON to fetch the metric float64 value
 	jsonKey string
+
+	// valueAsLabel, when true, makes GetMetric emit a constant gauge of 1
+	// and attach the string found at jsonKey as the last label instead of
+	// parsing it as a float. This is the Prometheus "info metric" pattern,
+	// used for identifiers/strings (e.g. a 128-bit GUID) that have no
+	// meaningful numeric value.
+	valueAsLabel bool
 }
 
 // NewMetricProvider is the constructor for MetricProvider objects.
@@ -30,6 +37,21 @@ func NewMetricProvider(
 		Desc:      desc,
 		ValueType: valueType,
 		jsonKey:   jsonKey,
+	}
+}
+
+// NewLabelMetricProvider builds an "info metric" provider: it emits a constant
+// gauge of 1 and attaches the string value at jsonKey as an extra label. Use it
+// for identifiers/strings that cannot be represented as a float.
+func NewLabelMetricProvider(
+	desc *prometheus.Desc,
+	jsonKey string,
+) MetricProvider {
+	return MetricProvider{
+		Desc:         desc,
+		ValueType:    prometheus.GaugeValue,
+		jsonKey:      jsonKey,
+		valueAsLabel: true,
 	}
 }
 
@@ -51,6 +73,15 @@ func (ip MetricProvider) GetMetric(
 	// would look like a counter reset to Prometheus.
 	if !result.Exists() {
 		return nil
+	}
+
+	// Info-metric mode: emit a constant 1 with the string value as an extra label.
+	if ip.valueAsLabel {
+		labelValues := make([]string, 0, len(labels)+1)
+		labelValues = append(labelValues, labels...)
+		labelValues = append(labelValues, result.String())
+
+		return prometheus.MustNewConstMetric(ip.Desc, ip.ValueType, 1, labelValues...)
 	}
 
 	// Handle both scalar values (v2.8) and object values (v2.11+)
