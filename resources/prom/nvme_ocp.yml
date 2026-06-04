@@ -1,39 +1,80 @@
+# Recording rules deriving OCP/SMART metrics from the raw values exposed by
+# nvme_exporter. These stay in Prometheus (not the exporter) on purpose:
+#   - rate()/predict_linear() rules are stateful and need stored history.
+#   - the rest embed deployment-/vendor-specific constants (P/E cycles,
+#     warranty years) that are far easier to tune here than in a recompiled
+#     binary deployed across hosts.
+#
+# Unit reference (verified against the specs):
+#   * nvme_data_units_written / _read: reported in THOUSANDS of 512-byte units
+#     and rounded up (NVMe Base Spec). Bytes = value * 512000  (= 1000 * 512).
+#   * nvme_physical_media_units_written_lo / _hi: the value is in BYTES, split
+#     across the low/high 64 bits of a 128-bit counter (OCP Datacenter NVMe SSD
+#     Spec). The low word alone covers ~18 EB, so _hi is effectively always 0
+#     and using _lo by itself is correct in practice.
+#   * nvme_physical_size: bytes.
+#   * nvme_temperature: Kelvin.
 groups:
   - name: Nvme device Write Amplification
     rules:
+      # Lifetime write-amplification factor: NAND bytes written / host bytes written.
+      # Both sides are in bytes (see unit reference above), so the ratio is dimensionless.
+      # Uses _lo only, which is correct until physical writes exceed ~18 EB.
       - record: device:nvme_device_waf:total
         expr: nvme_physical_media_units_written_lo / (nvme_data_units_written * 512000)
+      # NAND bytes written per second.
       - record: device:nvme_physical_media_units_written_lo:rate
         expr: rate(nvme_physical_media_units_written_lo[1m])
+      # Host bytes written per second (512000 converts data units -> bytes).
       - record: device:nvme_data_units_written:rate_bytes
         expr: rate(nvme_data_units_written[5m])*512000
+      # Instantaneous (windowed) write amplification = NAND write rate / host write rate.
       - record: device:nvme_device_writeamp:rate
         expr: device:nvme_physical_media_units_written_lo:rate / device:nvme_data_units_written:rate_bytes
   - name: NVMe device Temperature from K to Celsius
     rules:
+      # 273.15 = absolute zero offset (Kelvin -> Celsius).
       - record: device:nvme_temperature:celsius
         expr: (nvme_temperature - 273.15)
-  - name: NVMe Physical size of SSDs (in TB)    
+  - name: NVMe Physical size of SSDs (in TB)
     rules:
+      # 1e12 = decimal terabyte (TB, not TiB). round to 2 decimal places.
       - record: device:nvme_physical_size:TB
         expr: round(nvme_physical_size / 1000000000000, 0.01)
   - name: Calculation of TBW (capacity times flash cycles over waf)
     rules:
+      # ASSUMPTION: 3000 = rated NAND program/erase cycles. This is TLC-class;
+      # QLC is ~1000 and SLC ~100k. Tune per drive model/fleet — a wrong value
+      # here skews TBW, DRL and DWPD below.
       - record: device:TBW_numerator
         expr: device:nvme_physical_size:TB * 3000
+      # Total Bytes Written the drive is rated for = (capacity * P/E cycles) / WAF.
       - record: device:TBW_calculated
         expr: device:TBW_numerator / on(device) device:nvme_device_waf:total
   - name: Estimation of the device remaining life
     rules:
+      # Device Remaining Life % = 100 * (1 - host_TB_written / rated_TBW).
+      # 512000 converts data units -> bytes; 1e12 converts bytes -> TB.
       - record: device:DRL_calculated
         expr: 100 * (1 - ((nvme_data_units_written*512000)/1e12) / on(device) device:TBW_calculated)
-  
+
   - name: Prediction of DRL in 4 hours
     rules:
+      # Linear extrapolation of DRL over the next 4h (4*3600 s) from the last 10m.
+      # predict_linear is stateful (needs stored history) -> Prometheus only.
       - record: device:projected_DRL_4h
         expr: predict_linear(device:DRL_calculated[10m], 4*3600)
 
   - name: Calculation of dynamic Drives Writes per Day (DWPD)
     rules:
+      # Rated/endurance DWPD = rated_TBW / (capacity * warranty_days_in_TB-terms).
+      # ASSUMPTION: 365*5 = a 5-year warranty window. Adjust to the drive's warranty.
       - record: device:DWPD_calculated
-        expr: device:TBW_calculated / on(device) (365*5*device:nvme_physical_size:TB)  
+        expr: device:TBW_calculated / on(device) (365*5*device:nvme_physical_size:TB)
+      # Observed (actual) drive writes per day = host bytes/day / capacity_bytes.
+      # 512000: data units -> bytes; 86400: per-second rate -> per-day.
+      # rate() is stateful, so observed DWPD can only be computed here, not by the
+      # (stateless) exporter. Window [1d] is a rolling daily average; shorten it
+      # (e.g. [3h]) for a more responsive recent-DWPD value.
+      - record: device:DWPD_observed
+        expr: (rate(nvme_data_units_written[1d]) * 512000 * 86400) / on(device) nvme_physical_size
