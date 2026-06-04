@@ -193,29 +193,25 @@ func resolveCollectorStates() map[string]bool {
 }
 
 func printUsage() {
-	fmt.Println("nvme_exporter - Prometheus exporter for NVMe device metrics")
-	fmt.Println("\nExports NVMe SMART log and OCP SMART log metrics in Prometheus format.")
-	fmt.Println("\nDocumentation:")
-	fmt.Println("  NVMe SMART log specification (page 209):")
-	fmt.Println("    https://nvmexpress.org/wp-content/uploads/" +
+	out := flag.CommandLine.Output()
+
+	fmt.Fprintln(out, "nvme_exporter - Prometheus exporter for NVMe device metrics")
+	fmt.Fprintln(out, "\nExports NVMe SMART log and OCP SMART log metrics in Prometheus format.")
+	fmt.Fprintln(out, "\nDocumentation:")
+	fmt.Fprintln(out, "  NVMe SMART log specification (page 209):")
+	fmt.Fprintln(out, "    https://nvmexpress.org/wp-content/uploads/"+
 		"NVM-Express-Base-Specification-Revision-2.1-2024.08.05-Ratified.pdf")
-	fmt.Println("  OCP SMART log specification (page 24):")
-	fmt.Println("    https://www.opencompute.org/documents/datacenter-nvme-ssd-specification-v2-5-pdf")
-	fmt.Printf("\nMinimum supported nvme-cli version: %s\n", _minimumSupportedVersion)
-	fmt.Println("\nUsage: nvme_exporter [options]")
-	fmt.Println("\nWeb server options:")
-	fmt.Println("  --web.listen-address string")
-	fmt.Println("        Address on which to expose metrics and web interface (default \":9998\")")
-	fmt.Println("  --web.telemetry-path string")
-	fmt.Println("        Path under which to expose metrics (default \"/metrics\")")
-	fmt.Println("\nCollector options:")
-	fmt.Println("  --collector.<name>")
-	fmt.Println("        Enable the specified collector (enabled by default)")
-	fmt.Println("  --no-collector.<name>")
-	fmt.Println("        Disable the specified collector")
-	fmt.Println("  --collector.disable-defaults")
-	fmt.Println("        Disable all default collectors")
-	fmt.Println("\nAvailable collectors:")
+	fmt.Fprintln(out, "  OCP SMART log specification (page 24):")
+	fmt.Fprintln(out, "    https://www.opencompute.org/documents/datacenter-nvme-ssd-specification-v2-5-pdf")
+	fmt.Fprintf(out, "\nMinimum supported nvme-cli version: %s\n", _minimumSupportedVersion)
+	fmt.Fprintln(out, "\nUsage: nvme_exporter [options]")
+	fmt.Fprintln(out, "\nOptions:")
+
+	// Delegate flag descriptions to the flag package so they never drift
+	// from the actual flag definitions.
+	flag.PrintDefaults()
+
+	fmt.Fprintln(out, "\nAvailable collectors:")
 
 	for name, collector := range collectors {
 		defaultStr := ""
@@ -223,18 +219,18 @@ func printUsage() {
 			defaultStr = " (enabled by default)"
 		}
 
-		fmt.Printf("  %-10s %s%s\n", name, collector.description, defaultStr)
+		fmt.Fprintf(out, "  %-10s %s%s\n", name, collector.description, defaultStr)
 	}
 
-	fmt.Println("\nExamples:")
-	fmt.Println("  # Start with all default collectors on default port")
-	fmt.Println("  nvme_exporter")
-	fmt.Println("\n  # Listen on a specific address and port")
-	fmt.Println("  nvme_exporter --web.listen-address=\":9100\"")
-	fmt.Println("\n  # Disable OCP metrics collection")
-	fmt.Println("  nvme_exporter --no-collector.ocp")
-	fmt.Println("\n  # Only collect SMART metrics (disable info and OCP)")
-	fmt.Println("  nvme_exporter --collector.disable-defaults --collector.smart")
+	fmt.Fprintln(out, "\nExamples:")
+	fmt.Fprintln(out, "  # Start with all default collectors on default port")
+	fmt.Fprintln(out, "  nvme_exporter")
+	fmt.Fprintln(out, "\n  # Listen on a specific address and port")
+	fmt.Fprintln(out, "  nvme_exporter --web.listen-address=\":9100\"")
+	fmt.Fprintln(out, "\n  # Disable OCP metrics collection")
+	fmt.Fprintln(out, "  nvme_exporter --no-collector.ocp")
+	fmt.Fprintln(out, "\n  # Only collect SMART metrics (disable info and OCP)")
+	fmt.Fprintln(out, "  nvme_exporter --collector.disable-defaults --collector.smart")
 }
 
 func validatePrerequisites() {
