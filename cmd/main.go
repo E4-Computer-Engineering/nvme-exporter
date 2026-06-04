@@ -239,7 +239,7 @@ func printUsage() {
 
 func validatePrerequisites() {
 	// Validate current user
-	err := utils.CheckCurrentUser("root")
+	err := utils.CheckRoot()
 	if err != nil {
 		log.Printf("WARNING: current user is not root: %s", err.Error())
 		log.Printf("WARNING: exporter will continue running but scrapes will fail")
