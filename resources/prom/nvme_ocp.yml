@@ -1,6 +1,6 @@
 # Recording rules deriving OCP/SMART metrics from the raw values exposed by
 # nvme_exporter. These stay in Prometheus (not the exporter) on purpose:
-#   - rate()/predict_linear() rules are stateful and need stored history.
+#   - rate()-based rules are stateful and need stored history.
 #   - the endurance rules embed a warranty window that is contractual, not
 #     telemetry, and is easier to tune here than in a recompiled binary.
 #
@@ -53,11 +53,27 @@ groups:
         expr: round(nvme_physical_size / 1000000000000, 0.01)
   - name: Estimation of the device remaining life
     rules:
-      # Device Remaining Life % straight from the vendor's own wear estimate.
+      # ACCURATE remaining life %, straight from the vendor's own wear estimate.
       # No P/E-cycle assumption: nvme_percent_used already reflects real endurance
       # and write amplification. clamp_min floors it at 0 once life is exceeded.
+      # Answers "how much life is left right now".
       - record: device:DRL_calculated
         expr: clamp_min(100 - nvme_percent_used, 0)
+      # SMOOTH projection companion: estimated days until nvme_percent_used reaches
+      # 100% at the current write rate. Answers "when will it run out".
+      # The wear RATE comes from the continuous data-units counter (smooth), while
+      # the total endurance is calibrated from percent_used — so this avoids both
+      # the 3000 P/E guess and predict_linear over the coarse percent_used step.
+      #   remaining_units = data_units_written * (100 - used)/used
+      #   daily_units     = rate(data_units_written[1d]) * 86400
+      #   days            = remaining_units / daily_units   (the 512000 factor cancels)
+      # Guarded against new (used=0) and idle (rate=0) drives to avoid div-by-zero.
+      - record: device:DRL_days_remaining
+        expr: |
+          (nvme_data_units_written * (100 - nvme_percent_used) / nvme_percent_used)
+          / (rate(nvme_data_units_written[1d]) * 86400)
+          and (nvme_percent_used > 0)
+          and (rate(nvme_data_units_written[1d]) > 0)
   - name: Rated TBW implied by the vendor wear estimate (in TB)
     rules:
       # Total host TB the drive implies it can take = host_TB_written / fraction_used.
@@ -65,14 +81,6 @@ groups:
       # so it is not emitted (avoids div-by-zero) until the drive has measurable wear.
       - record: device:TBW_calculated
         expr: (((nvme_data_units_written * 512000) / 1e12) / (nvme_percent_used / 100)) and (nvme_percent_used > 0)
-  - name: Prediction of DRL in 4 hours
-    rules:
-      # Linear extrapolation of DRL over the next 4h (4*3600 s).
-      # NOTE: nvme_percent_used is coarse (integer %, updated infrequently), so a
-      # short lookback often yields a flat slope; [6h] gives predict_linear enough
-      # history to detect movement. predict_linear is stateful -> Prometheus only.
-      - record: device:projected_DRL_4h
-        expr: predict_linear(device:DRL_calculated[6h], 4*3600)
   - name: Calculation of Drives Writes per Day (DWPD)
     rules:
       # RATED DWPD = rated_TBW / (warranty_days * capacity_TB).
