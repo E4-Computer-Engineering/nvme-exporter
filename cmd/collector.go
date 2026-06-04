@@ -53,6 +53,29 @@ func (f *ProviderFactory) CreateLogMetricProvider(
 	)
 }
 
+// CreateLabelMetricProvider builds an info-metric provider that emits a
+// constant 1 and exposes the string at jsonKey as labelName (e.g. a GUID).
+func (f *ProviderFactory) CreateLabelMetricProvider(
+	fqName string,
+	help string,
+	jsonKey string,
+	labelName string,
+) pkg.MetricProvider {
+	labels := make([]string, 0, len(f.defaultLabels)+1)
+	labels = append(labels, f.defaultLabels...)
+	labels = append(labels, labelName)
+
+	return pkg.NewLabelMetricProvider(
+		prometheus.NewDesc(
+			fqName,
+			help,
+			labels,
+			nil,
+		),
+		jsonKey,
+	)
+}
+
 func (f *ProviderFactory) CreateInfoMetricProvider(
 	fqName string,
 	help string,
@@ -405,10 +428,12 @@ func newNvmeCollector(collectorStates map[string]bool) prometheus.Collector {
 			"Version number of the OCP SMART log page specification",
 			"Log page version",
 		),
-		gaugeValueFactory.CreateLogMetricProvider(
-			"nvme_log_page_guid",
-			"GUID (Globally Unique Identifier) of the OCP SMART log page",
+		gaugeValueFactory.CreateLabelMetricProvider(
+			"nvme_log_page_guid_info",
+			"OCP SMART log page GUID, exposed as the 'guid' label on a constant-1 info "+
+				"metric (it is a 128-bit identifier, not a meaningful number)",
 			"Log page GUID",
+			"guid",
 		),
 		gaugeValueFactory.CreateLogMetricProvider(
 			"nvme_errata_version_field",
