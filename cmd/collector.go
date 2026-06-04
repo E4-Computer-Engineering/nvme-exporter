@@ -155,13 +155,15 @@ func newNvmeCollector(collectorStates map[string]bool) prometheus.Collector {
 
 		counterValueFactory.CreateLogMetricProvider(
 			"nvme_data_units_read",
-			"Total number of 512-byte data units read from the NVMe device by the host",
+			"Number of 512-byte data units read by the host. Per the NVMe spec this is "+
+				"reported in thousands and rounded up, so bytes read = value * 512000 (1000 * 512)",
 			"data_units_read",
 		),
 
 		counterValueFactory.CreateLogMetricProvider(
 			"nvme_data_units_written",
-			"Total number of 512-byte data units written to the NVMe device by the host",
+			"Number of 512-byte data units written by the host. Per the NVMe spec this is "+
+				"reported in thousands and rounded up, so bytes written = value * 512000 (1000 * 512)",
 			"data_units_written",
 		),
 
@@ -254,22 +256,26 @@ func newNvmeCollector(collectorStates map[string]bool) prometheus.Collector {
 	ocpLogMetricProviders := []pkg.MetricProvider{
 		counterValueFactory.CreateLogMetricProvider(
 			"nvme_physical_media_units_written_hi",
-			"Physical media units written to the device (high 64 bits). Unit size is 1000h sector size",
+			"Bytes written to the physical media, high 64 bits of a 128-bit byte counter "+
+				"(per OCP spec the value is in bytes; hi is ~always 0 below ~18 EB)",
 			"Physical media units written.hi",
 		),
 		counterValueFactory.CreateLogMetricProvider(
 			"nvme_physical_media_units_written_lo",
-			"Physical media units written to the device (low 64 bits). Unit size is 1000h sector size",
+			"Bytes written to the physical media, low 64 bits of a 128-bit byte counter "+
+				"(per OCP spec the value is in bytes)",
 			"Physical media units written.lo",
 		),
 		counterValueFactory.CreateLogMetricProvider(
 			"nvme_physical_media_units_read_hi",
-			"Physical media units read from the device (high 64 bits). Unit size is 1000h sector size",
+			"Bytes read from the physical media, high 64 bits of a 128-bit byte counter "+
+				"(per OCP spec the value is in bytes; hi is ~always 0 below ~18 EB)",
 			"Physical media units read.hi",
 		),
 		counterValueFactory.CreateLogMetricProvider(
 			"nvme_physical_media_units_read_lo",
-			"Physical media units read from the device (low 64 bits). Unit size is 1000h sector size",
+			"Bytes read from the physical media, low 64 bits of a 128-bit byte counter "+
+				"(per OCP spec the value is in bytes)",
 			"Physical media units read.lo",
 		),
 		counterValueFactory.CreateLogMetricProvider(
@@ -277,9 +283,10 @@ func newNvmeCollector(collectorStates map[string]bool) prometheus.Collector {
 			"Raw count of user NAND blocks that have been retired due to errors",
 			"Bad user nand blocks - Raw",
 		),
-		counterValueFactory.CreateLogMetricProvider(
+		gaugeValueFactory.CreateLogMetricProvider(
 			"nvme_bad_user_nand_blocks_normalized",
-			"Normalized value (0-100) of bad user NAND blocks relative to the maximum allowed",
+			"Normalized value (0-100) of bad user NAND blocks relative to the maximum allowed. "+
+				"Gauge: this value decreases as blocks are retired, so it is not a counter",
 			"Bad user nand blocks - Normalized",
 		),
 		counterValueFactory.CreateLogMetricProvider(
@@ -287,9 +294,10 @@ func newNvmeCollector(collectorStates map[string]bool) prometheus.Collector {
 			"Raw count of system area NAND blocks that have been retired due to errors",
 			"Bad system nand blocks - Raw",
 		),
-		counterValueFactory.CreateLogMetricProvider(
+		gaugeValueFactory.CreateLogMetricProvider(
 			"nvme_bad_system_nand_blocks_normalized",
-			"Normalized value (0-100) of bad system NAND blocks relative to the maximum allowed",
+			"Normalized value (0-100) of bad system NAND blocks relative to the maximum allowed. "+
+				"Gauge: this value decreases as blocks are retired, so it is not a counter",
 			"Bad system nand blocks - Normalized",
 		),
 		counterValueFactory.CreateLogMetricProvider(
