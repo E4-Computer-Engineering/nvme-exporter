@@ -4,7 +4,7 @@
 [![build](https://github.com/E4-Computer-Engineering/nvme-exporter/actions/workflows/build.yml/badge.svg)](https://github.com/E4-Computer-Engineering/nvme-exporter/actions/workflows/build.yml)
 ![Latest GitHub release](https://img.shields.io/github/release/E4-Computer-Engineering/nvme-exporter.svg)
 [![GitHub license](https://img.shields.io/github/license/E4-Computer-Engineering/nvme-exporter)](https://github.com/E4-Computer-Engineering/nvme-exporter/blob/master/LICENSE)
-![GitHub all releases](https://img.shields.io/github/downloads/E4-Computer-Engineering/nvme-exporter/total)
+![GitHub all releases](https://img.shields.io/github/downloads/E4-Computer-Engineering/nvme-exporter/total?cacheSeconds=86400)
 
 Prometheus exporter for NVMe SMART log and OCP SMART log metrics, inspired by [fritchie nvme exporter](https://github.com/fritchie/nvme_exporter) and following [Prometheus node_exporter](https://github.com/prometheus/node_exporter) design patterns.
 
