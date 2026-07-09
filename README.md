@@ -1,6 +1,6 @@
 # NVMe Exporter
 
-[![Go report card](https://goreportcard.com/badge/github.com/E4-Computer-Engineering/nvme-exporter)](https://goreportcard.com/report/github.com/E4-Computer-Engineering/nvme-exporter)
+[![golangci-lint](https://img.shields.io/badge/golangci--lint-enabled-success?logo=go)](https://golangci-lint.run/)
 [![build](https://github.com/E4-Computer-Engineering/nvme-exporter/actions/workflows/build.yml/badge.svg)](https://github.com/E4-Computer-Engineering/nvme-exporter/actions/workflows/build.yml)
 ![Latest GitHub release](https://img.shields.io/github/release/E4-Computer-Engineering/nvme-exporter.svg)
 [![GitHub license](https://img.shields.io/github/license/E4-Computer-Engineering/nvme-exporter)](https://github.com/E4-Computer-Engineering/nvme-exporter/blob/master/LICENSE)
